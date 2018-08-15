@@ -1,5 +1,5 @@
 #format is like this:
-#typeOfParameter :: parameterOrObjectName :: option1=value2; option2+=this,is,a,list; option3#=this:is,a:dictionary,pretty:cool
+#typeOfParameter :: parameterOrObjectName :: option1=value2; option2=(this,is,a,list)
 
 
 ## general options
