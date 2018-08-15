@@ -1,0 +1,124 @@
+180716200002715466 :: leg :: TkEG :: obj.Et*1.1>29.4 :: obj.Bx==0 :: abs(obj.Eta)<1.392
+180716210128143680 :: leg :: TkMu :: obj.Et>16.0 :: obj.Bx==0 :: obj.Quality>=4 :: abs(obj.Eta)<2.1
+180718162928219956 :: leg :: TkJet :: obj.Et>91.2 :: obj.Bx==0 :: abs(obj.Eta)<2.5
+180718124152922192 :: leg :: trackerMet :: obj.Et>150.0
+180716194918810981 :: multi3 :: TkJet :: obj.Et>41.7 :: obj.Bx==0 :: abs(obj.Eta)<3.0 :: abs(obj.zVtx-elm1.zVtx)<1
+180716210128142693 :: leg :: TkMu :: obj.Et>12.0 :: obj.Bx==0 :: obj.Quality>=4 :: abs(obj.Eta)<2.1
+180718212029791733 :: leg :: tkMu :: obj.Et>24.0 :: obj.Bx==0 :: obj.Quality>=4 :: abs(obj.Eta)<2.1
+180718123336057899 :: leg :: tkEM :: obj.Et>20.7 :: obj.Bx==0 :: abs(obj.Eta)<1.392 :: obj.TrkIso<0.45
+180716200002717963 :: leg :: TkTau :: obj.Et>84.5 :: obj.Bx==0 :: abs(obj.Eta)<2.172
+180718123336054941 :: leg :: tkMu :: obj.Et>12.4 :: obj.Bx==0 :: obj.Quality>=4
+180718152230164830 :: leg :: tkMu :: obj.Et>12.0 :: obj.Bx==0 :: obj.Quality>=4 :: abs(obj.Eta)<2.1
+180718174125212831 :: leg :: TkMu :: obj.Et>12.0 :: obj.Bx==0 :: obj.Quality>=4
+180718124152917366 :: multi2 :: trackerJet :: obj.Et>41.7 :: obj.Bx==0 :: abs(obj.Eta)<3.0 :: abs(obj.zVtx-elm1.zVtx)<1
+180718124152920804 :: leg :: trackerMHt :: obj.Et>63.2
+180718124152915746 :: leg :: trackerJet :: obj.Et>91.2 :: obj.Bx==0 :: abs(obj.Eta)<3.0 :: abs(obj.zVtx-leg1.zVtx)<1
+180718123336057120 :: leg :: tkEM :: obj.Et>29.4 :: obj.Bx==0 :: abs(obj.Eta)<1.392 :: obj.TrkIso<0.45
+180718174125213126 :: leg :: TkMu :: obj.Et>8.12903225806 :: obj.Bx==0 :: obj.Quality>=4 :: abs(obj.zVtx-leg1.zVtx)<1
+180718133531502972 :: leg :: pfMet :: obj.Et>150.0
+180718212029795105 :: leg :: trackerHt :: obj.Et>275.0
+180716200002717096 :: leg :: EG :: obj.Et>15.0 :: obj.Bx==0 :: abs(obj.Eta)<1.392 :: functions["notMatched"](obj.Eta, leg1.Eta, obj.Phi, leg1.Phi)
+180716200002717407 :: leg :: TkEM :: obj.Et*1.1>20.7 :: obj.Bx==0 :: abs(obj.Eta)<1.392 :: obj.TrkIso<0.45
+180718212029794351 :: leg :: trackerHt :: obj.Et>200.0
+180718212029794100 :: leg :: tkEG :: obj.Et>34.0 :: obj.Bx==0 :: abs(obj.Eta)<1.392
+180718152230165343 :: leg :: tkMu :: obj.Et>14.0 :: obj.Bx==0 :: obj.Quality>=4 :: abs(obj.Eta)<2.1
+180716200002715789 :: leg :: TkIsoEG :: obj.Et*1.1>25.5 :: obj.Bx==0 :: abs(obj.Eta)<1.392 :: obj.TrkIso<0.14
+180718141822433541 :: leg :: pfJet :: obj.Et>91.2 :: obj.Bx==0 :: abs(obj.Eta)<3.0
+180718123336055404 :: leg :: tkMu :: obj.Et>8.4 :: obj.Bx==0 :: obj.Quality>=4 :: abs(obj.zVtx-leg1.zVtx)<1
+180718152230165757 :: leg :: tkMu :: obj.Et>16.0 :: obj.Bx==0 :: obj.Quality>=4 :: abs(obj.Eta)<2.1
+180716200002719771 :: leg :: TkTau :: obj.Et>35.1 :: obj.Bx==0 :: abs(obj.Eta)<3.0
+180718124152918994 :: leg :: trackerJet :: functions["notMatched"](obj.Eta, leg1.Eta, obj.Phi, leg1.Phi) :: obj.Et>36.1 :: obj.Bx==0 :: abs(obj.Eta)<2.172 :: abs(obj.zVtx-leg1.zVtx)<1
+180718124152915443 :: leg :: trackerJet :: obj.Et>91.2 :: obj.Bx==0 :: abs(obj.Eta)<3.0
+180718124152915049 :: leg :: trackerJet :: obj.Et>136.3 :: obj.Bx==0 :: abs(obj.Eta)<3.0
+180718141822435304 :: leg :: pfJet :: obj.Et>36.1 :: obj.Bx==0 :: abs(obj.Eta)<2.172
+180716200002713864 :: leg :: TkMu :: obj.Et>12.4 :: obj.Bx==0 :: obj.Quality>=4
+180718212029792970 :: leg :: tkEG :: obj.Et>22.0 :: obj.Bx==0 :: abs(obj.Eta)<1.392
+180716194918810968 :: multi2 :: TkJet :: obj.Et>41.7 :: obj.Bx==0 :: abs(obj.Eta)<3.0 :: abs(obj.zVtx-elm1.zVtx)<1
+180718162928222942 :: multi0 :: TkJet :: obj.Et>41.7 :: obj.Bx==0 :: abs(obj.Eta)<2.5 :: True
+180718123336056813 :: leg :: tkEG :: obj.Et>25.5 :: obj.Bx==0 :: abs(obj.Eta)<1.392 :: obj.TrkIso<0.1
+180718124152917408 :: multi3 :: trackerJet :: obj.Et>41.7 :: obj.Bx==0 :: abs(obj.Eta)<3.0 :: abs(obj.zVtx-elm1.zVtx)<1
+180718153404641763 :: multi0 :: TkJet :: obj.Et>41.7 :: obj.Bx==0 :: abs(obj.Eta)<2.172 :: True
+180718153404641812 :: multi1 :: TkJet :: obj.Et>41.7 :: obj.Bx==0 :: abs(obj.Eta)<2.172 :: abs(obj.zVtx-elm1.zVtx)<1
+180716200002719078 :: leg :: TkEG2 :: obj.Et*1.1>17.8 :: obj.Bx==0 :: abs(obj.Eta)<1.392 :: obj.TrkIso<0.1
+180718212029795324 :: leg :: trackerHt :: obj.Et>300.0
+180716210128142203 :: leg :: TkMu :: obj.Et>10.0 :: obj.Bx==0 :: obj.Quality>=4 :: abs(obj.Eta)<2.1
+180718124152917261 :: multi0 :: trackerJet :: obj.Et>41.7 :: obj.Bx==0 :: abs(obj.Eta)<3.0 :: True
+180718124152921992 :: leg :: trackerHt :: obj.Et>301.5
+180718123336054689 :: leg :: tkMu :: obj.Et>16.5 :: obj.Bx==0 :: obj.Quality>=4 :: abs(obj.Eta)<2.1
+180718124152917850 :: leg :: tkEG :: obj.Et>21.7 :: obj.Bx==0 :: abs(obj.Eta)<1.392 :: obj.TrkIso<0.1
+180718153404641886 :: multi3 :: TkJet :: obj.Et>41.7 :: obj.Bx==0 :: abs(obj.Eta)<2.172 :: abs(obj.zVtx-elm1.zVtx)<1
+180718153404640278 :: leg :: TkJet :: obj.Et>91.2 :: obj.Bx==0 :: abs(obj.Eta)<2.172
+180718124152920210 :: leg :: trackerJet :: obj.Et>36.1 :: obj.Bx==0 :: abs(obj.Eta)<2.172 :: abs(obj.zVtx-leg1.zVtx)<1
+180716200002723808 :: leg :: TkJet :: obj.Et>36.1 :: obj.Bx==0 :: abs(obj.Eta)<2.172 :: abs(obj.zVtx-leg1.zVtx)<1
+180716200002721022 :: leg :: TkJet :: obj.Et>91.2 :: obj.Bx==0 :: abs(obj.Eta)<3.0 :: abs(obj.zVtx-leg1.zVtx)<1
+180718142942455684 :: multi1 :: pfJet :: obj.Et>41.7 :: obj.Bx==0 :: abs(obj.Eta)<3.0
+180718124152919445 :: leg :: tkMu :: obj.Et>14.5 :: obj.Bx==0 :: abs(obj.Eta)<2.1 :: obj.Quality>=4
+180718152230166227 :: leg :: tkMu :: obj.Et>18.0 :: obj.Bx==0 :: obj.Quality>=4 :: abs(obj.Eta)<2.1
+180718174125214344 :: leg :: TkMu :: obj.Et>16.0 :: obj.Bx==0 :: obj.Quality>=4
+180718212029792176 :: leg :: tkMu :: obj.Et>28.0 :: obj.Bx==0 :: obj.Quality>=4 :: abs(obj.Eta)<2.1
+180718174125216413 :: leg :: TkMu :: obj.Et>13.5483870968 :: obj.Bx==0 :: obj.Quality>=4 :: abs(obj.zVtx-leg1.zVtx)<1
+180718174125213582 :: leg :: TkMu :: obj.Et>14.0 :: obj.Bx==0 :: obj.Quality>=4
+180716200002713579 :: leg :: TkMu :: obj.Et>16.5 :: obj.Bx==0 :: obj.Quality>=4 :: abs(obj.Eta)<2.1
+180716200002720435 :: leg :: TkJet :: obj.Et>136.3 :: obj.Bx==0 :: abs(obj.Eta)<3.0
+180718142942455705 :: multi2 :: pfJet :: obj.Et>41.7 :: obj.Bx==0 :: abs(obj.Eta)<3.0
+180716200002718777 :: leg :: Tau :: obj.Et>40 :: obj.Bx==0 :: abs(obj.Eta)<2.172 :: functions["deltaR"](obj.Eta, leg1.Eta, obj.Phi, leg1.Phi)>0.5
+180718123336058165 :: leg :: tkEM :: obj.Et>15.0 :: obj.Bx==0 :: abs(obj.Eta)<1.392 :: obj.TrkIso<0.45
+180716200002716501 :: leg :: TkEG2 :: obj.Et>20.7 :: obj.Bx==0 :: abs(obj.Eta)<1.392 :: obj.TrkIso<0.1
+180716210128144138 :: leg :: TkMu :: obj.Et>18.0 :: obj.Bx==0 :: obj.Quality>=4 :: abs(obj.Eta)<2.1
+180718212029796212 :: leg :: trackerMet :: obj.Et>125.0
+180716200002715211 :: leg :: TkMu :: abs(obj.zVtx-leg1.zVtx)<1 :: obj.Et>8.9 :: obj.Bx==0 :: abs(obj.Eta)<5 :: obj.Quality>=4
+180718174125215250 :: leg :: TkMu :: obj.Et>18.0 :: obj.Bx==0 :: obj.Quality>=4
+180718162928220420 :: leg :: TkJet :: obj.Et>91.2 :: obj.Bx==0 :: abs(obj.Eta)<2.5 :: abs(obj.zVtx-leg1.zVtx)<1
+180716194918810946 :: multi1 :: TkJet :: obj.Et>41.7 :: obj.Bx==0 :: abs(obj.Eta)<3.0 :: abs(obj.zVtx-elm1.zVtx)<1
+180718162928223053 :: multi3 :: TkJet :: obj.Et>41.7 :: obj.Bx==0 :: abs(obj.Eta)<2.5 :: abs(obj.zVtx-elm1.zVtx)<1
+180718134051424421 :: leg :: pfJet :: obj.Et>136.3 :: obj.Bx==0 :: abs(obj.Eta)<3.0
+180716200002724678 :: leg :: TkHT :: obj.Et>301.5
+180716200002723352 :: leg :: TkMu :: obj.Et>14.5 :: obj.Bx==0 :: abs(obj.Eta)<2.1 :: obj.Quality>=4
+180718153404639961 :: leg :: TkJet :: obj.Et>136.3 :: obj.Bx==0 :: abs(obj.Eta)<2.172
+180716200002724076 :: leg :: TkIsoEG :: obj.Et*1.1>21.7 :: obj.Bx==0 :: abs(obj.Eta)<1.392
+180718123336056446 :: leg :: tkEG :: obj.Et>29.4 :: obj.Bx==0 :: abs(obj.Eta)<1.392
+180716200002719513 :: leg :: Tau :: obj.Et>34.4 :: obj.Bx==0 :: abs(obj.Eta)<2.172 :: functions["deltaR"](obj.Eta, leg1.Eta, obj.Phi, leg1.Phi)>0.5
+180718162928219620 :: leg :: TkJet :: obj.Et>136.3 :: obj.Bx==0 :: abs(obj.Eta)<2.5
+180716200002717695 :: leg :: TkEM :: obj.Et*1.1>15.0 :: obj.Bx==0 :: abs(obj.Eta)<1.392 :: obj.TrkIso<0.45
+180718212029795977 :: leg :: trackerMet :: obj.Et>100.0
+180716200002724163 :: leg :: TkMHT :: obj.Et>63.2
+180718133531502836 :: leg :: pfHt :: obj.Et>301.5
+180718174125215622 :: leg :: TkMu :: obj.Et>12.1935483871 :: obj.Bx==0 :: obj.Quality>=4 :: abs(obj.zVtx-leg1.zVtx)<1
+180718142942455720 :: multi3 :: pfJet :: obj.Et>41.7 :: obj.Bx==0 :: abs(obj.Eta)<3.0
+180718174125212048 :: leg :: TkMu :: obj.Et>10.0 :: obj.Bx==0 :: obj.Quality>=4
+180718153404641858 :: multi2 :: TkJet :: obj.Et>41.7 :: obj.Bx==0 :: abs(obj.Eta)<2.172 :: abs(obj.zVtx-elm1.zVtx)<1
+180716210128144544 :: leg :: TkMu :: obj.Et>20.0 :: obj.Bx==0 :: obj.Quality>=4 :: abs(obj.Eta)<2.1
+180716200002714838 :: leg :: TkEG2 :: obj.Et>17.8 :: obj.Bx==0 :: abs(obj.Eta)<1.392 :: obj.TrkIso<0.1
+180716200002718282 :: leg :: TkTau :: obj.Et>47.7 :: obj.Bx==0 :: abs(obj.Eta)<2.172
+180718142942455647 :: multi0 :: pfJet :: obj.Et>41.7 :: obj.Bx==0 :: abs(obj.Eta)<3.0
+180716194918810895 :: multi0 :: TkJet :: obj.Et>41.7 :: obj.Bx==0 :: abs(obj.Eta)<3.0 :: True
+180718123336055845 :: leg :: tkEG :: obj.Et>17.8 :: obj.Bx==0 :: abs(obj.Eta)<1.392 :: obj.TrkIso<0.1
+180716200002720167 :: leg :: TkMu :: abs(obj.zVtx-leg1.zVtx)<1 :: obj.Et>12.4 :: obj.Bx==0 :: abs(obj.Eta)<5 :: obj.Quality>=4
+180718212029795562 :: leg :: trackerMet :: obj.Et>50.0
+180718162928222997 :: multi1 :: TkJet :: obj.Et>41.7 :: obj.Bx==0 :: abs(obj.Eta)<2.5 :: abs(obj.zVtx-elm1.zVtx)<1
+180718133531502317 :: leg :: pfMHt :: obj.Et>63.2
+180718123336056190 :: leg :: tkMu :: abs(obj.zVtx-leg1.zVtx)<1 :: obj.Et>8.9 :: obj.Bx==0 :: abs(obj.Eta)<5 :: obj.Quality>=4
+180718212029795774 :: leg :: trackerMet :: obj.Et>75.0
+180718212029793728 :: leg :: tkEG :: obj.Et>30.0 :: obj.Bx==0 :: abs(obj.Eta)<1.392
+180716200002720722 :: leg :: TkJet :: obj.Et>91.2 :: obj.Bx==0 :: abs(obj.Eta)<3.0
+180716210128143197 :: leg :: TkMu :: obj.Et>14.0 :: obj.Bx==0 :: obj.Quality>=4 :: abs(obj.Eta)<2.1
+180718141822434755 :: leg :: pfJet :: obj.Et>36.1 :: obj.Bx==0 :: abs(obj.Eta)<2.172 :: functions["notMatched"](obj.Eta, leg1.Eta, obj.Phi, leg1.Phi)
+180718124152917325 :: multi1 :: trackerJet :: obj.Et>41.7 :: obj.Bx==0 :: abs(obj.Eta)<3.0 :: abs(obj.zVtx-elm1.zVtx)<1
+180718212029794790 :: leg :: trackerHt :: obj.Et>250.0
+180718124152921498 :: leg :: trackerHt :: obj.Et>63.2
+180718174125216074 :: leg :: TkMu :: obj.Et>20.0 :: obj.Bx==0 :: obj.Quality>=4
+180718162928223031 :: multi2 :: TkJet :: obj.Et>41.7 :: obj.Bx==0 :: abs(obj.Eta)<2.5 :: abs(obj.zVtx-elm1.zVtx)<1
+180716200002716165 :: leg :: TkEM :: obj.Et*1.1>29.4 :: obj.Bx==0 :: abs(obj.Eta)<1.392 :: obj.TrkIso<0.17
+180718152230164283 :: leg :: tkMu :: obj.Et>10.0 :: obj.Bx==0 :: obj.Quality>=4 :: abs(obj.Eta)<2.1
+180718123336057442 :: leg :: tkEG :: obj.Et>20.7 :: obj.Bx==0 :: abs(obj.Eta)<1.392 :: obj.TrkIso<0.1
+180718212029794573 :: leg :: trackerHt :: obj.Et>225.0
+180718212029792580 :: leg :: tkEG :: obj.Et>18.0 :: obj.Bx==0 :: abs(obj.Eta)<1.392
+180718174125213906 :: leg :: TkMu :: obj.Et>9.48387096774 :: obj.Bx==0 :: obj.Quality>=4 :: abs(obj.zVtx-leg1.zVtx)<1
+180718152230166711 :: leg :: tkMu :: obj.Et>20.0 :: obj.Bx==0 :: obj.Quality>=4 :: abs(obj.Eta)<2.1
+180716200002714410 :: leg :: TkMu :: obj.Et>8.4 :: obj.Bx==0 :: obj.Quality>=4 :: abs(obj.zVtx-leg1.zVtx)<1
+180718174125214789 :: leg :: TkMu :: obj.Et>10.8387096774 :: obj.Bx==0 :: obj.Quality>=4 :: abs(obj.zVtx-leg1.zVtx)<1
+180716200002723007 :: leg :: TkJet :: functions["notMatched"](obj.Eta, leg1.Eta, obj.Phi, leg1.Phi) :: obj.Et>36.1 :: obj.Bx==0 :: abs(obj.Eta)<2.172 :: abs(obj.zVtx-leg1.zVtx)<1
+180718153404640735 :: leg :: TkJet :: obj.Et>91.2 :: obj.Bx==0 :: abs(obj.Eta)<2.172 :: abs(obj.zVtx-leg1.zVtx)<1
+180718174125212363 :: leg :: TkMu :: obj.Et>6.77419354839 :: obj.Bx==0 :: obj.Quality>=4 :: abs(obj.zVtx-leg1.zVtx)<1
+180716200002722530 :: leg :: TkEG :: obj.Et*1.1>21.7 :: obj.Bx==0 :: abs(obj.Eta)<1.392 :: obj.TrkIso<0.1
+180718212029793340 :: leg :: tkEG :: obj.Et>26.0 :: obj.Bx==0 :: abs(obj.Eta)<1.392

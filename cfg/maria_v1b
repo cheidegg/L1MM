@@ -1,0 +1,181 @@
+#format is like this:
+#typeOfParameter :: parameterOrObjectName :: option1=value2; option2+=this,is,a,list; option3#=this:is,a:dictionary,pretty:cool
+
+
+## general options
+## -----------------------------------------------------------
+variable :: bundledate       :: 2018-07-18
+variable :: nBunches         :: 2760
+variable :: revFreq          :: 11246
+
+variable :: tiers            :: (variations)
+
+variable :: varBins          :: (30,50)
+#variable :: varBins          :: (10,20,30,40,50,60,70,80,90,100)
+##variable :: varBins          :: (100,140,275,425,575,700,850,1000)
+variable :: varError         :: 0.2
+variable :: varInterpol      :: linear
+variable :: varLeg           :: 1
+variable :: varCut           :: 1
+variable :: varPrecision     :: 2
+variable :: varIterations    :: 5
+variable :: useNominalBwF    :: False
+
+
+
+## samples (always all samples are used!)
+## -----------------------------------------------------------
+sample   :: neutrinos        :: path:=input/2018-07-14_mariav1b/neutrinos.root; tree:=l1PhaseIITree/L1PhaseIITree
+
+
+## physics objects at trigger level
+## -----------------------------------------------------------
+## Electrons and Photons
+object :: eg           :: basebranch:=eg        ; variables:=(Et,Eta,Phi,Bx,Iso,zVtx,HwQual); \
+                          leading:=Et; lengthbranch:=nEG; onToOff:=0
+object :: tkEG         :: basebranch:=tkEG      ; variables:=(Et,Eta,Phi,Bx,TrkIso,zVtx); \
+                          leading:=Et; lengthbranch:=nTkEG; onToOff:=0
+object :: tkEM         :: basebranch:=tkEM      ; variables:=(Et,Eta,Phi,Bx,TrkIso,zVtx); \
+                          leading:=Et; lengthbranch:=nTkEM; onToOff:=0
+## Muons
+object :: mu           :: basebranch:=muon      ; variables:=(Et,Eta,Phi,EtaAtVtx,PhiAtVtx,Bx,Chg,Iso,Qual); \
+                          leading:=Et; lengthbranch:=nMuons; onToOff:=0
+object :: muKF         :: basebranch:=muonKF    ; variables:=(Et,Eta,Phi,Chg,Qual,Bx); \
+                          leading:=Et; lengthbranch:=nMuonsKF; onToOff:=0
+object :: tkMu         :: basebranch:=tkMuon    ; variables:=(Et,Eta,Phi,Chg,Iso,TrkIso,Quality,zVtx,Bx); \
+                          leading:=Et; lengthbranch:=nTkMuons; onToOff:=0
+## Taus
+object :: tau          :: basebranch:=tau       ; variables:=(Et,Eta,Phi,Bx,Iso,NTT,HasEM,isMerged,HwQual); \
+                          leading:=Et; lengthbranch:=nTaus; onToOff:=0
+object :: tkTau        :: basebranch:=tkTau     ; variables:=(Et,Eta,Phi,Bx,TrkIso,zVtx); \
+                          leading:=Et; lengthbranch:=nTkTau; onToOff:=0
+## Jets
+object :: jet          :: basebranch:=jet       ; variables:=(Et,Eta,Phi,Bx); \
+                          leading:=Et; lengthbranch:=nJets; onToOff:=0
+object :: pfJet        :: basebranch:=puppiJet  ; variables:=(Et,Eta,Phi,Bx,zVtx,EtUnCorr); \
+                          leading:=Et; lengthbranch:=nPuppiJets; onToOff:=0
+object :: tkCaloJet    :: basebranch:=tkCaloJet ; variables:=(Et,Eta,Phi,Bx,zVtx); \
+                          leading:=Et; lengthbranch:=nTkCaloJets; onToOff:=0
+object :: trackerJet   :: basebranch:=trackerJet; variables:=(Et,Eta,Phi,Bx,zVtx); \
+                          leading:=Et; lengthbranch:=nTrackerJets; onToOff:=0
+## HT
+object :: trackerHt    :: basebranch:=trackerHT  ; variables:=(Et=); \
+                          leading:=Et; isFlat:=True; onToOff:=0 
+object :: pfHt         :: basebranch:=puppiHT   ; variables:=(Et=); \
+                          leading:=Et; isFlat:=True; onToOff:=0
+## MHT
+object :: trackerMHt   :: basebranch:=trackerMHT  ; variables:=(Et=,Phi,Bx); \
+                          leading:=Et; isFlat:=True; onToOff:=0
+object :: pfMHt        :: basebranch:=puppiMHT   ; variables:=(Et,Phi); \
+                          leading:=Et; isFlat:=True; onToOff:=0
+## MET
+object :: trackerMet   :: basebranch:=trackerMet  ; variables:=(Et,Phi,Bx,SumEt); \
+                          leading:=Et; isFlat:=True; onToOff:=0
+object :: pfMet        :: basebranch:=puppiMET    ; variables:=(Et,Phi); \
+                          leading:=Et; isFlat:=True; onToOff:=0
+
+
+## function aliases
+## -----------------------------------------------------------
+function :: regionalEta      :: args:=(x,cut); lambda:= cut<=x and x<=(21.-cut)
+function :: notMatched       :: args:=(eta1,eta2,phi1,phi2); lambda:= math.sqrt(math.pow(abs(abs(eta1)-abs(eta2)),2) + math.pow(abs(phi1-phi2) if abs(phi1-phi2)<=math.pi else 2*math.pi-abs(phi1-phi2),2))>0.1
+function :: deltaR           :: args:=(eta1,eta2,phi1,phi2); lambda:= math.sqrt(math.pow(abs(eta1-eta2),2) + math.pow(abs(phi1-phi2) if abs(phi1-phi2)<=math.pi else 2*math.pi-abs(phi1-phi2),2))
+
+
+## trigger paths
+## -----------------------------------------------------------
+
+### muonisms
+trigger  :: L1_SingleTkMu     :: leg1:=(tkMu   , 16.5, Bx==0, Quality>=4, abs(Eta)<2.1); \
+                                 range1:=(leg1, cut1, 12, 16, 20, 24, 28); \
+                                 bwFraction:=0.0755952
+trigger  :: L1_DoubleTkMu     :: leg1:=(tkMu   , 12.4, Bx==0, Quality>=4); \
+                                 leg2:=(tkMu   ,  8.4, Bx==0, Quality>=4, abs(zVtx-leg1.zVtx)<1); \
+                                 bwFraction:=0.00595238
+
+## electrolinos and photonuous
+trigger  :: L1_TkEle_TkMu     :: leg1:=(tkEG   , 17.8, Bx==0, abs(Eta)<1.392, TrkIso<0.1); \
+                                 leg2:=(tkMu   ,  8.9, Bx==0, abs(Eta)<5    , Quality>=4, abs(zVtx-leg1.zVtx)<1); \
+                                 bwFraction:=0.00357143
+trigger  :: L1_SingleTkEle    :: leg1:=(tkEG   , 29.4, Bx==0, abs(Eta)<1.392); \
+                                 range1:=(leg1, cut1, 18, 22, 26, 30, 34); \
+                                 bwFraction:=0.0875
+trigger  :: L1_SingleIsoTkEle :: leg1:=(tkEG   , 25.5, Bx==0, abs(Eta)<1.392, TrkIso<0.1); \
+                                 bwFraction:=0.0684524
+trigger  :: L1_SingleTkEM     :: leg1:=(tkEM   , 29.4, Bx==0, abs(Eta)<1.392, TrkIso<0.45); \
+                                 bwFraction:=0.167262
+trigger  :: L1_TkEle_EG       :: leg1:=(tkEG   , 20.7, Bx==0, abs(Eta)<1.392, TrkIso<0.1); \
+                                 leg2:=(EG     , 15.0, Bx==0, abs(Eta)<1.392, notMatched(Eta, leg1.Eta, Phi, leg1.Phi)); \
+                                 bwFraction:=0.0613095
+trigger  :: L1_DoubleTkEM     :: leg1:=(tkEM   , 20.7, Bx==0, abs(Eta)<1.392, TrkIso<0.45); \
+                                 leg2:=(tkEM   , 15.0, Bx==0, abs(Eta)<1.392, TrkIso<0.45); \
+                                 bwFraction:=0.0946429
+
+## tau stuff
+
+#trigger  :: L1_SingleTkTau    :: leg1:=(TkTau  , 84.5, Bx==0, abs(Eta)<2.172); \
+#                                 bwFraction:=0.0690476
+#trigger  :: L1_TkTau_Tau      :: leg1:=(TkTau  , 47.7, Bx==0, abs(Eta)<2.172); \
+#                                 leg2:=(Tau    , 40  , Bx==0, abs(Eta)<2.172, deltaR(Eta, leg1.Eta, Phi, leg1.Phi)>0.5); \
+#                                 bwFraction:=0.172024
+#trigger  :: L1_TkEle_Tau      :: leg1:=(TkEG2  , Et*1.1>17.8, Bx==0, abs(Eta)<1.392, TrkIso<0.1); \
+#                                 leg2:=(Tau    , 34.4, Bx==0, abs(Eta)<2.172, deltaR(Eta, leg1.Eta, Phi, leg1.Phi)>0.5); \
+#                                 bwFraction:=0.0404762
+#trigger  :: L1_TkTau_TkMu     :: leg1:=(TkTau  , 35.1, Bx==0, abs(Eta)<3.0); \
+#                                 leg2:=(TkMu   , 12.4, Bx==0, abs(Eta)<5   , Quality>=4, abs(zVtx-leg1.zVtx)<1); \
+#                                 bwFraction:=0.0261905
+
+
+## tracker Jet, HT, MET
+trigger  :: L1_SingleTkJet    :: leg1:=(trackerJet,136.3, Bx==0, abs(Eta)<3.0); \
+                                 bwFraction:=0.231548
+trigger  :: L1_DoubleTkJetVtx :: leg1:=(trackerJet, 91.2, Bx==0, abs(Eta)<3.0); \
+                                 leg2:=(trackerJet, 91.2, Bx==0, abs(Eta)<3.0, abs(zVtx-leg1.zVtx)<1); \
+                                 bwFraction:=0.139881
+trigger  :: L1_QuadTkJetVtx   :: multi1:=(trackerJet, 4, 41.7, Bx==0, abs(Eta)<3.0, (True, abs[zVtx-elm1.zVtx]<1, abs[zVtx-elm1.zVtx]<1, abs[zVtx-elm1.zVtx]<1)); \
+                                 bwFraction:=0.064881
+trigger  :: L1_TkEle_TkJet    :: leg1:=(tkEG      , 21.7, Bx==0, abs(Eta)<1.392, TrkIso<0.1); \
+                                 leg2:=(trackerJet, 36.1, Bx==0, abs(Eta)<2.172, abs(zVtx-leg1.zVtx)<1, notMatched(Eta, leg1.Eta, Phi, leg1.Phi)); \
+                                 bwFraction:=0.0815476
+trigger  :: L1_TkMu_TkJet     :: leg1:=(tkMu      , 14.5, Bx==0, abs(Eta)<2.1, Quality>=4); \
+                                 leg2:=(trackerJet, 36.1, Bx==0, abs(Eta)<2.172, abs(zVtx-leg1.zVtx)<1); \
+                                 bwFraction:=0.047619
+trigger  :: L1_TkEle_TkHTM    :: leg1:=(tkEG      , 21.7, Bx==0, abs(Eta)<1.392, TrkIso<0.1); \
+                                 leg2:=(trackerMHt, 63.2); \
+                                 bwFraction:=0.0541667
+trigger  :: L1_TkMu_TkHTM     :: leg1:=(tkMu      , 14.5, Bx==0, abs(Eta)<2.1, Quality>=4); \
+                                 leg2:=(trackerMHt, 63.2); \
+                                 bwFraction:=0.014881
+trigger  :: L1_TkHTT          :: leg1:=(trackerHt  , 301.5); \
+                                 range1:=(leg1, cut1, 200, 225, 250, 275, 300); \
+                                 bwFraction:=0.0732143
+trigger  :: L1_TkMET          :: leg1:=(trackerMet , 150.0); \
+                                 range1:=(leg1, cut1, 50, 75, 100, 125, 150)
+
+
+## PUPPI Jet, HT, MET
+#trigger  :: L1_SinglePfJet    :: leg1:=(pfJet,136.3, Bx==0, abs(Eta)<3.0); \
+#                                 bwFraction:=0.231548
+#trigger  :: L1_DoublePfJetVtx :: leg1:=(pfJet, 91.2, Bx==0, abs(Eta)<3.0); \
+#                                 leg2:=(pfJet, 91.2, Bx==0, abs(Eta)<3.0); \
+#                                 bwFraction:=0.139881
+#trigger  :: L1_QuadPfJetVtx   :: multi1:=(pfJet, 4, 41.7, Bx==0, abs(Eta)<3.0); \
+#                                 range1:=(multi1, cut1, 40, 50, 60);\ 
+#                                 bwFraction:=0.064881
+#trigger  :: L1_TkEle_PfJet    :: leg1:=(tkEG , 21.7, Bx==0, abs(Eta)<1.392, TrkIso<0.1); \
+#                                 leg2:=(pfJet, 36.1, Bx==0, abs(Eta)<2.172, notMatched(Eta, leg1.Eta, Phi, leg1.Phi)); \
+#                                 bwFraction:=0.0815476
+#trigger  :: L1_TkMu_PfJet     :: leg1:=(tkMu , 14.5, Bx==0, abs(Eta)<2.1, Quality>=4); \
+#                                 leg2:=(pfJet, 36.1, Bx==0, abs(Eta)<2.172); \
+#                                 bwFraction:=0.047619
+#trigger  :: L1_TkEle_PfHTM    :: leg1:=(tkEG , 21.7, Bx==0, abs(Eta)<1.392, TrkIso<0.1); \
+#                                 leg2:=(pfMHt, 63.2); \
+#                                 bwFraction:=0.0541667
+#trigger  :: L1_TkMu_PfHTM     :: leg1:=(tkMu , 14.5, Bx==0, abs(Eta)<2.1, Quality>=4); \
+#                                 leg2:=(pfMHt, 63.2); \
+#                                 bwFraction:=0.014881
+#trigger  :: L1_PfHTT          :: leg1:=(pfHt , 301.5); \
+#                                 bwFraction:=0.0732143
+#trigger  :: L1_PfMET          :: leg1:=(pfMet, 150.0)
+
+
