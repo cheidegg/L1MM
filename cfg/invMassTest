@@ -94,5 +94,5 @@ function :: deltaR           :: args:=(eta1,eta2,phi1,phi2); lambda:= math.sqrt(
 
 #trigger  :: L1_TriTkJetVtxMll  :: multi1:=(trackerJet, 4, 41.7, Bx==0, abs(Eta)<3.0, (True, abs[zVtx-elm1.zVtx]<1, abs[zVtx-elm1.zVtx]<1, abs[zVtx-elm1.zVtx]<1), $[1:2]mass>=170); 
 
-trigger  :: L1_TriTkJetVtxMll  :: multi1:=(trackerJet, 4, 41.7, Bx==0, abs(Eta)<3.0, (True, abs[zVtx-elm1.zVtx]<1, abs[zVtx-elm1.zVtx]<1, abs[zVtx-elm1.zVtx]<1), $[1:2]mass>160<50); 
+trigger  :: L1_TriTkJetVtxMll  :: multi1:=(trackerJet, 4, 41.7, Bx==0, abs(Eta)<3.0, (True, abs[zVtx-elm1.zVtx]<1, abs[zVtx-elm1.zVtx]<1, abs[zVtx-elm1.zVtx]<1), $[2:2]mass>160<50); 
 
