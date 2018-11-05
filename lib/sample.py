@@ -7,6 +7,7 @@ from functions           import *
 from functionsTreeReader import *
 
 
+
 class Event:
 	def __init__(self, master, tree, entry):
 		self.master = master
@@ -27,6 +28,7 @@ class Event:
 		if self.tree.entry == self.entry-1: self.tree._ttreereader.Next()
 		else: self.tree._ttreereader.SetEntry(self.entry)
 		self.tree.entry = self.entry
+
 
 
 class Object:
@@ -64,6 +66,7 @@ class Object:
 		return self.__repr__()
 
 
+
 class Objectlist:
 	def __init__(self, master, event, objDef):
 		self.master = master
@@ -86,24 +89,6 @@ class Objectlist:
 		return self.length
 
 
-
-####class VirtualTrigger:
-####	def __init__(self, master, trigger, sample, thresholdvar):
-####		self.master  = master
-####		self.trigger = trigger
-####		self.sample  = sample
-####	def apply(self):
-####		:wq
-####vi 
-####		if 
-####	def retrieveLists(self):
-####		toRetrieve = self.master.getListsToRetrieve(self.name)
-####		if len(toRetrieve.values())==0: return
-####		for rkey, rlist in toRetrieve.iteritems():
-####			if rkey in self.lists.keys(): continue
-####			self.lists[rkey] = rlist
-
-
 class Sample:
 	def __init__(self, master, sampleDef):
 		self.master  = master
@@ -115,6 +100,7 @@ class Sample:
 		self.characterize()
 		self.retrieveLists()
 	def analyze(self, triggers):
+		## building the TEventLists for every trigger
 		if not self.opened: self.load()
 		self.setEntries()
 		toRun = []
@@ -126,17 +112,12 @@ class Sample:
 		t0       = time.clock()
 		tlast    = t0
 		for ievt in xrange(self.getEntries()):
-			#if ievt!=2417: continue
 			event       = Event(self.master, self.tree, ievt)
-			#print event.tkMuonEt
 			trigObjects = {}
 			for objDef in self.master.menu.objects:
-				###objs = Objectlist(self.master, event, objDef)
 				trigObjects[objDef.name] = Objectlist(self.master, event, objDef)
-				#print objDef.name, len(trigObjects[objDef.name])
 			for it,trigger in enumerate([x for x in triggers if x.triggerId in toRun]):
 				if trigger.apply(event, trigObjects): 
-					#print ievt
 					self.lists[trigger.triggerId].Enter(ievt)
 			if ievt>0 and ievt%10000 == 0: ## FIXME: customize the sh** out of this!
 				t1 = time.clock()
@@ -145,6 +126,7 @@ class Sample:
 		for newId in toRun:
 			self.master.addList(newId, self.sampleId, self.lists[newId])
 	def analyzePairing(self, triggers):
+		## building the pandas DataFrames for every trigger (not yet working)
 		if not self.opened: self.load()
 		self.setEntries()
 		toRun = []
@@ -158,42 +140,37 @@ class Sample:
 		t0       = time.clock()
 		tlast    = t0
 		for ievt in xrange(self.getEntries()):
-			#if ievt!=2417: continue
 			event       = Event(self.master, self.tree, ievt)
-			#print event.tkMuonEt
 			trigObjects = {}
 			for objDef in self.master.menu.objects:
-				###objs = Objectlist(self.master, event, objDef)
 				trigObjects[objDef.name] = Objectlist(self.master, event, objDef)
-				#print objDef.name, len(trigObjects[objDef.name])
-			### here need to put the pairing and store that in the data frame!!!!
-			###for it,trigger in enumerate([x for x in triggers if x.triggerId in toRun]):
-			###	if trigger.apply(event, trigObjects, exceptThresholds=True): 
-			###		self.buffers[trigger.triggerId].append(trigger.getThresholdValues())
-			###		if trigger.apply(event, trigObjects, onlyThresholds=True):
-			###			#print ievt
-			###			self.lists[trigger.triggerId].Enter(ievt)
 			if ievt>0 and ievt%10000 == 0: ## FIXME: customize the sh** out of this!
 				t1 = time.clock()
 				self.master.vb.talk("Processed %8d/%8d entries of this tree (elapsed time %7.1fs, curr speed %8.3f kHz, avg speed %8.3f kHz)" % (ievt, self.entries, t1-t0, (10.000)/(max(t1-tlast,1e-9)),ievt/1000./(max(t1-t0,1e-9))))
 				tlast = t1
 	def apply(self, trigger):
+		## run a single trigger
 		if not trigger.triggerId in self.lists.keys(): 
 			self.analyze([trigger])
 		return self.lists[trigger.triggerId].GetN()
 	def characterize(self):
+		## find and store the virtual id of the sample
 		self.sampleId = self.master.getSampleId(self.opts["path"])
 	def close(self):
+		## close the ntuple
 		if not self.opened: return
 		self.tfile.Close()
 		self.opened = False	
 	def createBuffer(self, triggers):
+		## creating the pandas data frames, basically calling analyzePairing
 		if len(triggers)==0: return
 		pass
 	def getEntries(self):
+		## return total entries in the ntuple
 		if not hasattr(self, "entries"): self.setEntries()
 		return self.entries
 	def init(self):
+		## initializing the tree reader thing
 		self.tree.entry = -1
 		self.tree._ttreereader = ROOT.TTreeReader(self.tree)
 		self.tree._ttreereader.SetEntry(0)
@@ -205,6 +182,7 @@ class Sample:
 		self.tree.valueReader = types.MethodType(getValueReader, self.tree)
 		self.tree.readBranch  = types.MethodType(readBranch    , self.tree)
 	def intersect(self, triggers):
+		## building the list for events passing both triggers together
 		toRun = []
 		for trigger in triggers:
 			if trigger.triggerId in self.lists: continue
@@ -222,6 +200,7 @@ class Sample:
 		self.open()
 		self.init()
 	def merge(self, triggers):
+		## building the list for events passing any of the triggers
 		toRun = []
 		for trigger in triggers:
 			if trigger.triggerId in self.lists: continue
@@ -236,6 +215,7 @@ class Sample:
 		self.master.addList(newId, self.sampleId, merged)
 		return merged.GetN()
 	def open(self):
+		## open the ntuple for the sample
 		if self.opened: return
 		self.tfile  = ROOT.TFile.Open(self.opts["path"],"read")
 		self.tree   = getRootObj(self.tfile, self.opts["tree"])
@@ -250,13 +230,5 @@ class Sample:
 
 
 
-		## NO:
-		## save an event list per trigger, which carries the name of IDs of the individual legs
-		## NO: save event lists indeed per leg, retrieve and apply them per leg (i.e. 
-		## intersections, or the analyze is still the trigger.apply but remember which legs to run and which ones not to run
-		## then, when varying thresholds, can copy a trigger leg and replace one or more cuts
-		## this gives a new character and a new possibility to have a leg for that sample
-		## STILL: when varying the thresholds, new triggers need to be analyzed, right? on top of the original event lists (lower thresholds) or completely new?
-		## the filename where the lists are stored is the name of the sample + its ID that is stored somewhere related to its path
 
 

@@ -2,8 +2,11 @@ from trigger import *
 import ROOT
 import numpy
 
-
 class Memory:
+	## implementation of a memory, buffer, cache, ... (fancy other word about data storage to be filled in here)
+	## whatever table of plot or other object is produced by the menu class below
+	## will be stored in this memory wrapper
+
 	def __init__(self):
 		self.items = []
 	def append(self, item):
@@ -33,6 +36,9 @@ class Memory:
 	
 
 class MenuTable:
+	## implementation of the menu table, i.e. collection of all triggers
+	## with rates and event numbers and correlations
+
 	def __init__(self, master, name = ""):
 		self.master       = master
 		self.name         = name
@@ -115,6 +121,8 @@ class MenuTable:
 
 
 class VariationTable:
+	## implementation of a MenuTable-like object but for the case of variations
+
 	def __init__(self, master, name = ""):
 		self.master    = master
 		self.name      = name
@@ -146,6 +154,8 @@ class VariationTable:
 
 
 class Variation:
+	## implementation of the variations
+
 	def __init__(self, table, trigger, prefix, rname, thresholds, rates):
 		self.table      = table
 		self.master     = table.master
@@ -206,13 +216,11 @@ class Variation:
 		goff .Write()
 		gone .Write()
 		goffe.Write()
-		
-
-
 
 
 
 class Menu:
+	## the main entity realizing the menu computation
 	def __init__(self, master):
 		self.master     = master
 		self.memory     = Memory()
@@ -255,10 +263,8 @@ class Menu:
 				existing = [x[1] for x in self.ratesPerThresholds[trigger.triggerId][rname]] if hasattr(self, "ratesPerThresholds") and trigger.triggerId in self.ratesPerThresholds.keys() and rname in self.ratesPerThresholds[trigger.triggerId].keys() else []
 				for value in rdef[2:]:
 					if value in existing: continue
-					#print rdef
 					variations[trigger.triggerId][rname].append(trigger.makeVar(rname, rdef[0], rdef[1], value))
 				alltogether += variations[trigger.triggerId][rname]
-		#print alltogether
 		self.master.samples.analyze(alltogether)
 		if not hasattr(self, "ratesPerThresholds"     ): self.ratesPerThresholds      = {}
 		if not hasattr(self, "totalRatesPerThresholds"): self.totalRatesPerThresholds = {}
@@ -276,14 +282,12 @@ class Menu:
 			for rname in self.ratesPerThresholds[trigId].keys():
 				self.ratesPerThresholds     [trigId][rname].sort(key=lambda x: x[1])
 				self.totalRatesPerThresholds[trigId][rname].sort(key=lambda x: x[1])
-		print "printing varied rates"
-		print self.ratesPerThresholds
-		print self.totalRatesPerThresholds
-
-
+		#print "printing varied rates"
+		#print self.ratesPerThresholds
+		#print self.totalRatesPerThresholds
 	def computeThresholds(self):
 		## for one fixed bandwidth, compute thresholds of all paths
-		return
+		return ## still testing!!!
 		table = self.memory.get("MenuTable", True)
 		if not table:
 			self.computeRate()
@@ -292,7 +296,7 @@ class Menu:
 		## in principle: run self.computeThresholdsPerRatesFull([float(self.master.cfg.variable["totalBandwidth"])]):
 	def computeThresholdsPerRatesFull(self):
 		## for a fixed set of bandwidths, compute the trigger thresholds with fixed fraction
-		return
+		return ## still testing!!!
 		varBins = self.master.cfg.variable["varBins"] ## leave this stuff here in order to add additional bins if you like
 		if len(varBins)==0: return
 		triggersToUse = filter(lambda x: "bwFraction" in x.opts.keys() and x.opts["bwFraction"], self.triggers)
@@ -384,6 +388,9 @@ class Menu:
 
 
 class MenuFitter:
+	## class that implements the fitting of the individual trigger thresholds
+	## for a given total effective menu rate
+
 	def __init__(self, master, name, triggers, varBins):
 		self.name          = name
 		self.master        = master

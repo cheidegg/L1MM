@@ -184,7 +184,21 @@ def getPoissonErrors(values, errors=[]):
 		dn.append(scale*(ROOT.ROOT.Math.chisquared_quantile_c(q,2*(N+1))/2.-N))
 	return up, dn
 
+def binomial(n, k):
+	if n == k: return 1
+	if k == 1: return n
+	if k >  n: return 0
+	return math.factorial(n) // (math.factorial(n-k) * math.factorial(k))
 
+def between(x, xmin, xmax):
+	return xmin<x and x<xmax
 
+def betweenEq(x, xmin, xmax):
+	return xmin<=x and x<=xmax
 
+def outside(x, xmin, xmax):
+	return x<xmax or x>xmin
+
+def outsideEq(x, xmin, xmax):
+	return x<=xmax or x>=xmin
 

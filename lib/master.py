@@ -1,9 +1,10 @@
-from functions     import *
-from cfg           import *
-from menu          import *
-from sample        import *
-from samplemanager import *
-from vb            import *
+from functions          import *
+from functionsHardcoded import *
+from cfg                import *
+from menu               import *
+from sample             import *
+from samplemanager      import *
+from vb                 import *
 
 import os
 
@@ -168,10 +169,15 @@ class Master:
 			f.Close()
 	def loadFunctions(self):
 		self.functions = {}
+		## adding functions defined on-the-fly in the cfg
 		for f in self.cfg.function:
 			if not "lambda" in f.options or not "args" in f.options: continue
 			#print "lambda "+",".join(f.options["args"])+": "+f.options["lambda"]
 			self.functions[f.name] = eval("lambda "+",".join(f.options["args"])+": "+f.options["lambda"])
+		## adding hard-coded functions
+		fhc = HcFunctions(self)
+		for fname in fhc._listAllFunctions():
+			self.functions[fname] = fhc._getFunctionEntity(fname)
 	def loadSamples(self):
 		self.samples = SampleManager(self)
 		for sampDef in self.cfg.sample:
