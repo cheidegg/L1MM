@@ -17,7 +17,7 @@ class Memory:
 	def find(self, typename, iteration=0):
 		found = 0
 		for attr in self.items:
-			if type(attr)==typename and found==iteration: return attr
+			if typename in attr.__class__.__name__ and found==iteration: return attr
 		return None
 	def free(self, exceptions=[]):
 		for attr in self.items:
@@ -26,12 +26,12 @@ class Memory:
 	def get(self, typename, freeTheRest=False):
 		if self.has(typename): 
 			keep = self.find(typename)
-			self.free([keep.name])
+			if freeTheRest: self.free([keep.name])
 			return keep
 		return None
 	def has(self, typename):
 		for attr in self.items:
-			if type(attr)==typename: return True
+			if typename in attr.__class__.__name__: return True
 		return False
 	
 
@@ -178,7 +178,6 @@ class Variation:
 
 		onToOff = 0
 		if self.rname in self.trigger.ranges.keys():
-			#print self.trigger.ranges[self.rname][0]
 			obj     = self.trigger.getLegByName(self.trigger.ranges[self.rname][0]).obj
 			onToOff = float(obj.onToOff)
 
@@ -223,10 +222,13 @@ class Menu:
 	## the main entity realizing the menu computation
 	def __init__(self, master):
 		self.master     = master
+		self.varCut     = "cut"+str(self.master.cfg.variable["varCut"])
+		self.varCutM1   = "cut"+str(self.master.cfg.variable["varCut"]-1)
 		self.memory     = Memory()
 		self.objects    = []
 		self.triggers   = []
 		self.rateFactor = float(self.master.cfg.variable["nBunches"])*float(self.master.cfg.variable["revFreq"])/1000
+		self.match      = {}
 	def addTrigObject(self, objDef):
 		self.objects.append(TriggerObject(self.master, objDef))
 	def addTrigger(self, trigDef):
@@ -256,77 +258,102 @@ class Menu:
 		variations  = {}
 		alltogether = []
 		for trigger in self.triggers:
-			variations[trigger.triggerId] = {}
-			theDict = rangeDef[trigger.triggerId] if trigger.triggerId in rangeDef.keys() and len(rangeDef[trigger.triggerId].keys())>0 else trigger.ranges
+			trigId = trigger.getOldestParent().triggerIdeff
+			variations[trigId] = {}
+			theDict = dict(trigger.ranges)
+			if trigId in rangeDef.keys() and len(rangeDef[trigId].keys())>0:
+				theDict.update(rangeDef[trigId])
 			for rname,rdef in theDict.iteritems():
-				variations[trigger.triggerId][rname] = []
-				existing = [x[1] for x in self.ratesPerThresholds[trigger.triggerId][rname]] if hasattr(self, "ratesPerThresholds") and trigger.triggerId in self.ratesPerThresholds.keys() and rname in self.ratesPerThresholds[trigger.triggerId].keys() else []
+				variations[trigId][rname] = []
+				existing = [x[1] for x in self.ratesPerThresholds[trigId][rname]] if hasattr(self, "ratesPerThresholds") and trigId in self.ratesPerThresholds.keys() and rname in self.ratesPerThresholds[trigId].keys() else []
 				for value in rdef[2:]:
 					if value in existing: continue
-					variations[trigger.triggerId][rname].append(trigger.makeVar(rname, rdef[0], rdef[1], value))
-				alltogether += variations[trigger.triggerId][rname]
+					variations[trigId][rname].append(trigger.makeVar(rname, rdef[0], rdef[1], value))
+				alltogether += variations[trigId][rname]
 		self.master.samples.analyze(alltogether)
 		if not hasattr(self, "ratesPerThresholds"     ): self.ratesPerThresholds      = {}
 		if not hasattr(self, "totalRatesPerThresholds"): self.totalRatesPerThresholds = {}
 		for trigger in self.triggers:
-			if not trigger.triggerId in self.ratesPerThresholds     : self.ratesPerThresholds     [trigger.triggerId] = {}
-			if not trigger.triggerId in self.totalRatesPerThresholds: self.totalRatesPerThresholds[trigger.triggerId] = {}
-			for rname in variations[trigger.triggerId].keys():
-				if not rname in self.ratesPerThresholds     [trigger.triggerId].keys(): self.ratesPerThresholds     [trigger.triggerId][rname] = []
-				if not rname in self.totalRatesPerThresholds[trigger.triggerId].keys(): self.totalRatesPerThresholds[trigger.triggerId][rname] = []
-				for var in variations[trigger.triggerId][rname]:
-					self.ratesPerThresholds     [trigger.triggerId][rname].append((var, var.varValue, factor * self.master.samples.apply(var)))
+			trigId = trigger.getOldestParent().triggerIdeff
+			if not trigId in self.ratesPerThresholds     : self.ratesPerThresholds     [trigId] = {}
+			if not trigId in self.totalRatesPerThresholds: self.totalRatesPerThresholds[trigId] = {}
+			for rname in variations[trigId].keys():
+				if not rname in self.ratesPerThresholds     [trigId].keys(): self.ratesPerThresholds     [trigId][rname] = []
+				if not rname in self.totalRatesPerThresholds[trigId].keys(): self.totalRatesPerThresholds[trigId][rname] = []
+				for var in variations[trigId][rname]:
+					self.ratesPerThresholds     [trigId][rname].append((var, var.varValue, factor * self.master.samples.apply(var)))
 					updatedSet = updateTriggers(self.triggers, var)
-					self.totalRatesPerThresholds[trigger.triggerId][rname].append((var, var.varValue, factor * self.master.samples.applyAny(updatedSet)))
+					self.totalRatesPerThresholds[trigId][rname].append((var, var.varValue, factor * self.master.samples.applyAny(updatedSet)))
 		for trigId in self.ratesPerThresholds.keys():
 			for rname in self.ratesPerThresholds[trigId].keys():
 				self.ratesPerThresholds     [trigId][rname].sort(key=lambda x: x[1])
 				self.totalRatesPerThresholds[trigId][rname].sort(key=lambda x: x[1])
-		#print "printing varied rates"
-		#print self.ratesPerThresholds
-		#print self.totalRatesPerThresholds
-	def computeThresholds(self):
-		## for one fixed bandwidth, compute thresholds of all paths
-		return ## still testing!!!
-		table = self.memory.get("MenuTable", True)
-		if not table:
-			self.computeRate()
-			table = self.memory.get("MenuTable")
-		table.name = "fixedBandwidth"
-		## in principle: run self.computeThresholdsPerRatesFull([float(self.master.cfg.variable["totalBandwidth"])]):
+		##print "printing varied rates"
+		##print self.ratesPerThresholds
+		##print self.totalRatesPerThresholds
 	def computeThresholdsPerRatesFull(self):
 		## for a fixed set of bandwidths, compute the trigger thresholds with fixed fraction
-		return ## still testing!!!
+		return ## FIXME: not really needed this
+		if self.master.getOpt("useNominalBwF")!=True: return
 		varBins = self.master.cfg.variable["varBins"] ## leave this stuff here in order to add additional bins if you like
 		if len(varBins)==0: return
 		triggersToUse = filter(lambda x: "bwFraction" in x.opts.keys() and x.opts["bwFraction"], self.triggers)
 		if len(triggersToUse)==0: return
-		table = self.memory.get("MenuTable")
+		self.matching()
 		fit = MenuFitter(self.master, "full", triggersToUse, varBins)
-		additionals = fit.checkRatesPerThresholds(self.ratesPerThresholds if hasattr(self, "ratesPerThresholds") else {})
+		additionals = fit.checkRatesPerThresholds(self.triggers, self.ratesPerThresholds if hasattr(self, "ratesPerThresholds") else {})
 		self.computeRatesPerThresholds(additionals)
+		table = self.memory.get("MenuTable")
+		if not table:
+			self.computeRate()
+			table = self.memory.get("MenuTable")
 		fit.setNominalResult(table)
 		self.thresholdsPerRatesFull = fit.secondaryProcedure(self.ratesPerThresholds)
-		#print self.thresholdsPerRatesFull
+		self.memory.free()
+		self.dumpVars(self.thresholdsPerRatesFull)
 	def computeThresholdsPerRatesIndiv(self):
 		## for a fixed set of bandwidths, compute the trigger thresholds without fixed fraction
+		##if self.master.getOpt("useNominalBwF")!=False: return ## FIXME: not really needed this
 		varBins = self.master.cfg.variable["varBins"]
 		if len(varBins)==0: return
-		table = self.memory.get("MenuTable")
+		self.matching()
 		fit = MenuFitter(self.master, "indiv", self.triggers, varBins)
-		additionals = fit.checkRatesPerThresholds(self.totalRatesPerThresholds if hasattr(self, "totalRatesPerThresholds") else {})
+		additionals = fit.checkRatesPerThresholds(self.triggers, self.totalRatesPerThresholds if hasattr(self, "totalRatesPerThresholds") else {})
 		self.computeRatesPerThresholds(additionals)
+		table = self.memory.get("MenuTable")
+		if not table:
+			self.computeRate()
+			table = self.memory.get("MenuTable")
 		fit.setNominalResult(table)
-		self.thresholdsPerRatesIndiv = fit.primaryProcedure(self.totalRatesPerThresholds, False)
-		#print self.thresholdsPerRatesIndiv
+		self.thresholdsPerRatesIndiv = fit.primaryProcedure(self.totalRatesPerThresholds, True)
+		self.memory.free()
+		self.dumpVars(self.thresholdsPerRatesIndiv)
 	def dump(self, outdir):
 		self.memory.dump(outdir)
+	def dumpVars(self, collection, it=-1):
+		if it>=0: print "Intermediate fit result (iteration "+str(it)+"):"
+		else    : print "FINAL fit result:"
+		maxlength = max([len(x) for x in collection.keys()])+5
+		refs = {self.master.menu.getTriggerById(k).name: k for k in collection.keys() if self.master.menu.getTriggerById(k)}
+		names = refs.keys()[:]
+		names.sort()
+		fs = "%-"+str(maxlength)+"s:"
+		fss = fs
+		for tname in names:
+			print fss%tname,
+			for rate,thrshld in collection[refs[tname]].iteritems():
+				if "tuple" in type(thrshld).__name__:
+					print "%3.2f (%4.1f, target: %4.1f)"%(float(thrshld[0]),float(thrshld[1]), float(rate)),
+				else:
+					print "%3.2f (%4.1f)"%(float(thrshld),float(rate)),
+			print
 	def fillVariationTable(self, name = ""):
 		table = VariationTable(self.master, name)
 		table.setIndividualRates(self.ratesPerThresholds     )
 		table.setTotalRates     (self.totalRatesPerThresholds)
 		self.memory.append(table)
-
+	def matching(self):
+		self.match = {trigger.triggerId: trigger.name for trigger in self.triggers}
 
 
 
@@ -398,49 +425,50 @@ class MenuFitter:
 		self.varBins       = varBins
 		self.method        = self.master.cfg.variable["varInterpol"]
 		self.varLeg        = int(self.master.cfg.variable["varLeg"])-1
-		self.varCut        = "cut"+str(self.master.cfg.variable["varCut"])
-		self.varCutM1      = "cut"+str(self.master.cfg.variable["varCut"]-1)
+		self.varCut        = self.master.menu.varCut 
+		self.varCutM1      = self.master.menu.varCutM1
 		self.varIterations = int(self.master.cfg.variable["varIterations"])
 		self.precision     = float(self.master.cfg.variable["varPrecision"])
 		self.useNominalBwF = self.master.cfg.variable["useNominalBwF"]
 		self.factor        = self.master.menu.rateFactor / self.master.samples.getNEvts()
+		self.nominal       = {}
 
 	## ---- public functions ----------
-	def checkRatesPerThresholds(self, ratesPerThresholdRaw):
+	def checkRatesPerThresholds(self, triggers, ratesPerThresholdRaw):
 		## search for total or individual rates per trigger threshold
 		## also check if there are enough variations available to do an interpolation later
-		## here: check from CFG arguments if the variations will suffice or not, otherwise add them as additionals!
-		theGoodName = None
+		## here: check from CFG arguments if the variations will suffice or not, 
+		## otherwise add them as additionals!
 		require = {}
-		for trigId,rvar in ratesPerThresholdRaw.iteritems():
-			trigger = self.master.menu.getTriggerById(trigId)
+		for trigger in triggers:
+			trigId  = trigger.getOldestParent().triggerIdeff
 			trigLeg = trigger.getLegNameByIdx(self.varLeg)
 			require[trigId] = {}
 			isOk=False
-			for rname,rvalues in rvar.iteritems():
-				if not rvalues[0][0].varLeg==trigLeg: continue
-				if not rvalues[0][0].varCut==self.varCut: continue
-				theGoodName = rname
-				if len(rvalues)==1:
-					nominal = trigger.getCutValue(trigLeg, self.varCutM1)
-					if rvalues[0][1]==nominal: newvalues = [nominal*0.5, nominal*1.5]
-					else                     : newvalues = [nominal    , nominal*1.5]
-					require[trigId][rname] = [rvalues[0][0].varLeg, rvalues[0][0].varCut]+newvalues
-					isOk=True
-				if len(rvalues)==2: 
-					theValues = [x[1] for x in rvalues]
-					maxvalue = max(theValues)
-					require[trigId][rname] = [rvalues[0][0].varLeg, rvalues[0][0].varCut]+[maxvalue*1.5]
-					isOk=True
-				if len(rvalues)>2:
-					isOk=True
+			theGoodName = None
+			if trigId in ratesPerThresholdRaw.keys():
+				for rname,rvalues in ratesPerThresholdRaw[trigId].iteritems():
+					if not rvalues[0][0].varLeg==trigLeg: continue
+					if not rvalues[0][0].varCut==self.varCut: continue
+					theGoodName = rname
+					if len(rvalues)==1:
+						nominal = trigger.getCutValues(trigLeg, self.varCutM1)[0]
+						if rvalues[0][1]==nominal: newvalues = [nominal*0.5, nominal*1.5]
+						else                     : newvalues = [nominal    , nominal*1.5]
+						require[trigId][rname] = [rvalues[0][0].varLeg, rvalues[0][0].varCut]+newvalues
+						isOk=True
+					if len(rvalues)==2: 
+						theValues = [x[1] for x in rvalues]
+						maxvalue = max(theValues)
+						require[trigId][rname] = [rvalues[0][0].varLeg, rvalues[0][0].varCut]+[maxvalue*1.5]
+						isOk=True
+					if len(rvalues)>2:
+						isOk=True
 			if not isOk:
-				nominal = trigger.getCutValue(trigLeg, self.varCutM1)
+				nominal = trigger.getCutValues(trigLeg, self.varCutM1)[0]
 				val1 = [n*0.5 for n in nominal] if type(nominal)==list else nominal*0.5
 				val2 = [n*1.5 for n in nominal] if type(nominal)==list else nominal*1.5
 				require[trigId][theGoodName if theGoodName else "required1"] = [trigLeg, self.varCut, val1, nominal, val2]
-		#print "REQUIRE!"
-		#print require
 		return require
 
 	def primaryProcedure(self, ratesPerThreshold, useBwF):
@@ -467,13 +495,16 @@ class MenuFitter:
 		return theResult
 	def setNominalResult(self, menutable):
 		## set nominal result to extract nominal BwF 
-		pass
+		self.nominal = dict(menutable.rates)
 
 
 	## ---- private functions ---------
 	def getNominalBwF(self, trigger):
 		## get nominal BwF from nominal menu table
-		pass
+		if not hasattr(self, "nominal"): return 1.0
+		total = self.nominal["menu"] ## FIXME: "menu" or "menuraw" ? 
+		this  = self.nominal[trigger.triggerId]
+		return this/total if total else 1.0
 	def interpolate(self, collection, rate):
 		## interpolate the rate to extract an estimate for the threshold
 		## collection = [(threshold1, rate1), (threshold2, rate2), ...]
@@ -484,17 +515,13 @@ class MenuFitter:
 			result = numpy.polyfit(rates, numpy.log(thresholds), 1, w=numpy.sqrt(thresholds))
 			return float(math.exp(result[1])*exp(result[0]*rate))
 		## linear fit
-		#print "i am here!"
 		lower = findIntersectionIdx(rates, rate)
-		#print "my lower bin:",lower
 		if lower<0: ## outside of boundary (lower edge)
 			lower = 0
 		if lower>=len(thresholds): ## outside of boundary (upper edge)
 			lower = len(thresholds)-2
-		#print "using:",lower
 		y1 = thresholds[lower]; y2 = thresholds[lower+1]
 		x1 = rates     [lower]; x2 = rates     [lower+1]
-		#print "corresponds to [",x1,x2,"], [",y1,y2,"]"
 		result = numpy.polyfit([x1,x2], [y1,y2], 1, w=numpy.sqrt([y1, y2]))
 		return float(result[0]*rate + result[1])
 	def interpolationFactor(difference, desiredValue, precision):
@@ -503,28 +530,31 @@ class MenuFitter:
 		if difference>precision*10: return desiredValue/(precision*10)
 		return desiredValue/precision
 	def prepare(self, ratesPerThresholdRaw):
-		## here make a newcollection that has the "range" step integrated out (only one variation per trigger!)
-		#print "preperare:",ratesPerThresholdRaw
+		## here make a newcollection that has the "range" step integrated out 
+		## i.e. only one variation per trigger!
 		self.ratesPerThreshold = {}
 		for trig,rvar in ratesPerThresholdRaw.iteritems():
 			for rname,rvalues in rvar.iteritems():
 				if not rvalues[0][0].varCut==self.varCut: continue
 				self.ratesPerThreshold[trig] = [(x[1],x[2]) for x in rvalues]
 				break
-		#print "I AM HERE!"
-		#print self.ratesPerThreshold
 	def primaryFit(self, useBwF, returnAtSignChange=False):
 		## this is the primary fit as done for most variation cases
 		## the fit here is done on the basis of the ratesPerThreshold
-		#print "primary FIT"
-		#print self.ratesPerThreshold
 		self.primaryFitResult  = {trigger.triggerId: {} for trigger in self.triggers}
 		self.primaryFitTests   = {trigger.triggerId: {} for trigger in self.triggers}
 		self.primarySignChange = {trigger.triggerId: {} for trigger in self.triggers}
 		if len(self.triggers)==0: return
-		bwf = [float(trigger.opts["bwFraction"]) for trigger in self.triggers] if useBwF and not self.useNominalBwF else \
-		      [self.getNominalBwF(trigger)       for trigger in self.triggers] if useBwF else \
-		      [1.0                               for trigger in self.triggers]
+		bwf = []
+		for trigger in self.triggers:
+			print "Using BWF",
+			if   useBwF and self.useNominalBwF:
+				bwf.append(self.getNominalBwF(trigger))
+			elif useBwF:
+				bwf.append(float(trigger.opts["bwFraction"]) if "bwFraction" in trigger.opts.keys() else 1.0)
+			else:
+				bwf.append(1.0)
+			print bwf[-1],"for trigger",self.master.menu.match[trigger.triggerId]
 		for totalRate in self.varBins:
 			factors = [1.0   for i in range(len(self.triggers))]
 			diffs   = [99999 for i in range(len(self.triggers))]
@@ -535,18 +565,12 @@ class MenuFitter:
 			while any(need):
 				iteration += 1
 				if iteration==self.varIterations: break
-				#print "primary iteration",iteration
 				theVars     = {}
 				runTriggers = []
 				for it, trigger in enumerate(self.triggers):
 					if not need[it]: continue
-					#print "interpolating trigger",trigger.triggerId
-					#print totalRate,bwf[it],factors[it],
-					thisThreshold = self.interpolate(self.ratesPerThreshold[trigger.triggerId], totalRate*bwf[it]*factors[it]) 
-					#print thisThreshold
-					#print self.name+"_"+str(totalRate)+"_"+str(iteration), "all", self.varCut, thisThreshold
+					thisThreshold = self.interpolate(self.ratesPerThreshold[trigger.getOldestParent().triggerIdeff], totalRate*bwf[it]*factors[it]) 
 					theVars[it]   = trigger.makeVar(self.name+"_"+str(totalRate)+"_"+str(iteration), "any", self.varCut, thisThreshold)
-					#print theVars[it].varValue
 					runTriggers.append(theVars[it])
 				if len(runTriggers) == 0: break
 				self.master.samples.analyze(runTriggers)
@@ -557,24 +581,23 @@ class MenuFitter:
 					self.primaryFitTests[trigger.triggerId][totalRate].append((theVars[it].varValue, thisRate))
 					previous    = diffs[it]
 					diffs[it]   = thisRate - totalRate
-					#print "this rate is",thisRate,totalRate,diffs[it],self.precision
 					if abs(diffs[it]) < self.precision:
 						self.primaryFitResult[trigger.triggerId][totalRate] = theVars[it].varValue
 						need[it] = False
 					elif returnAtSignChange and diffs[it]*previous<0:
+						self.primaryFitResult [trigger.triggerId][totalRate] = theVars[it].varValue
 						self.primarySignChange[trigger.triggerId][totalRate] = True
 						need[it] = False
 					else:
 						factors[it] *= totalRate/thisRate
 #						factors[it] = getInterpolFactor(diffs[it], totalRate, precision)
-					#print need[it]
-					#print
+				collection = {trigger.triggerId: {totalRate: self.primaryFitTests[trigger.triggerId][totalRate][-1]} for trigger in self.triggers}
+				self.master.menu.dumpVars(collection, iteration)
 	def secondaryFit(self): 
 		self.secondaryFitResult = {trigger.triggerId: {} for trigger in self.triggers}
 		if len(self.triggers)==0: return
 		toRun = {}
-		for trigId,rvals in signChanges.iteritems():
-			self.thresholdsPerRatesFull[trigId] = {}
+		for trigId,rvals in self.primarySignChange.iteritems():
 			for rate,sign in rvals.iteritems():
 				if not sign: continue
 				if not rate in toRun.keys(): toRun[rate] = []
@@ -606,27 +629,6 @@ class MenuFitter:
 						need[it] = False
 					else:
 						factors[it] *= totalRate/thisRate
-
-
-
-			
-
-
-##	def computeThresholds(self):
-##		## for a fixed bandwidth, compute thresholds of all paths
-##		table = self.memory.get("MenuTable", True)
-##		if not table:
-##			self.computeRate()
-##			table = self.memory.get("MenuTable")
-##		table.name = "fixedBandwidth"
-##		## in principle: run self.computeThresholdsPerRatesFull([float(self.master.cfg.variable["totalBandwidth"])]):
-##
-##
-#		desiredRate = float(self.master.cfg.variable["totalBandwidth"])
-#		require = {}
-#		for trigger in self.triggers:
-#			desiredBw = float(self.variable["bwFraction"])*desiredRate
-#			require[trigger.triggerId] = {"var1": []}
 
 
 

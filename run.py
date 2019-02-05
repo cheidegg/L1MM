@@ -13,7 +13,6 @@ parser.add_option("-o", dest="outdir" , type="string"      , default=None , help
 parser.add_option("-v", dest="verbose", type="int"         , default=2    , help="Set verbosity level")
 parser.add_option("-M", dest="tiers"  , action="append"    , default=[]   , help="Run a module by name")
 parser.add_option("-X", dest="exclude", action="append"    , default=[]   , help="Exclude a module by name")
-parser.add_option("-S", "--buffer"    , dest="runBuffer"    , action="store_true", default=False, help="Run the skim module")
 parser.add_option("-T", "--thresholds", dest="runThresholds", action="store_true", default=False, help="Run the fixed thresholds module")
 parser.add_option("-B", "--bandwidth" , dest="runBandwidth" , action="store_true", default=False, help="Run the fixed bandwidth module")
 parser.add_option("-V", "--variations", dest="runVariations", action="store_true", default=False, help="Run the variation of the thresholds module")

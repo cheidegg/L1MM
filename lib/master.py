@@ -23,6 +23,7 @@ class Master:
 		mkdir(self.cachedir )
 		mkdir(self.cachedir+"/lists"   )
 		mkdir(self.cachedir+"/virtuals")
+		mkdir(self.cachedir+"/buffers" )
 		mkdir(self.outdir   )
 		mkdir(self.bundledir)
 		self.vb        = Verbose(self, self.getOpt("verbose"))
@@ -34,20 +35,23 @@ class Master:
 	def sequence(self):
 		## this is the main sequence
 		#self.loadBundle()
-		self.loadVirtualLegs    ()
-		self.loadVirtualSamples ()
-		self.loadVirtualTriggers()
-		self.loadLists          ()
-		self.loadFunctions      ()
-		self.loadTriggers       ()
-		self.loadSamples        ()
-		self.checkTasks         ()
-		##self.doBuffer           () ## not fully working yet
-		self.doThresholds       ()
-		self.doVariations       ()
-		##self.doBandwidth        () ## not fully working yet
-		self.end                ()
+		self.loadVirtuals ()
+		self.loadLists    ()
+		self.loadBuffers  ()
+		self.loadFunctions()
+		self.loadTriggers ()
+		self.loadSamples  ()
+		self.checkTasks   ()
+		self.doBuffer     ()
+		self.doThresholds ()
+		self.doVariations ()
+		self.doBandwidth  ()
+		self.end          ()
 	## ---------------------------------------------
+	def addBuffer(self, trigId, sampleId, theBuf):
+		theBuf.name = trigId+"_::_"+sampleId
+		if not sampleId in self.retrievableBuffers.keys(): self.retrievableBuffers[sampleId] = {}
+		self.retrievableBuffers[sampleId][trigId] = theBuf
 	def addList(self, trigId, sampleId, theList):
 		theList.SetName(trigId+"_::_"+sampleId)
 		if not sampleId in self.retrievableLists.keys(): self.retrievableLists[sampleId] = {}
@@ -58,14 +62,13 @@ class Master:
 	def checkTasks(self):
 		self.tasks = []
 		## do this via init
-		allTiers = ["thresholds", "bandwidth", "buffer", "variations"]
+		allTiers = ["thresholds", "bandwidth", "variations"]
 		cfgTiers = self.getOpt("tiers")
 		exclude  = self.getOpt("exclude")
 		required = []
 		if self.getOpt("runThresholds"): required.append("thresholds")
 		if self.getOpt("runBandwidth" ): required.append("bandwidth" )
 		if self.getOpt("runVariations"): required.append("variations")
-		if self.getOpt("runBuffer"    ): required.append("buffer"    )
 		for tier in allTiers:
 			if (tier in cfgTiers or tier in required) and not tier in exclude: 
 				self.tasks.append(tier) 
@@ -75,10 +78,9 @@ class Master:
 		self.vb.talk("Starting fixed bandwidth tier")
 		self.menu.computeThresholdsPerRatesIndiv()
 		self.menu.computeThresholdsPerRatesFull()
-		self.menu.computeThresholds()
 		self.menu.dump(self.bundledir+"/bandwidth")
 	def doBuffer(self):
-		if not "buffer" in self.tasks: return
+		if self.getOpt("useBuffer")!=True: return
 		self.vb.talk("Starting to prepare the buffers")
 		self.samples.createBuffer()
 	def doThresholds(self):
@@ -97,10 +99,9 @@ class Master:
 	def dump(self):
 		pass
 	def end(self):
-		self.saveVirtualLegs    ()
-		self.saveVirtualSamples ()
-		self.saveVirtualTriggers()
-		self.saveLists()
+		self.saveVirtuals()
+		self.saveBuffers ()
+		self.saveLists   ()
 		self.samples.closeAll()
 		self.vb.close()
 	def getLegId(self, character):
@@ -112,6 +113,10 @@ class Master:
 			newId += 1
 		self.virtuallegs[str(newId)] = character
 		return str(newId)
+	def getBuffersToRetrieve(self, sampleid):
+		if not sampleid: return {}
+		if not sampleid in self.retrievableBuffers.keys(): return {}
+		return self.retrievableBuffers[sampleid]
 	def getListsToRetrieve(self, sampleid):
 		if not sampleid: return {}
 		if not sampleid in self.retrievableLists.keys(): return {}
@@ -123,7 +128,6 @@ class Master:
 		if len(sampleId)==1: return sampleId[0]
 		newId = int(timestamp(False))
 		while str(newId) in self.virtualsamples.keys():
-			#print newId
 			newId += 1
 		self.virtualsamples[str(newId)] = path
 		return str(newId)
@@ -136,10 +140,10 @@ class Master:
 			newId += 1
 		self.virtualtriggers[str(newId)] = character
 		return str(newId)
-	def getTrigIdFromList(self, listOfTrigs, logicalOr = False):
+	def getTrigIdFromList(self, listOfTrigs, logicalOr = False, ideff = False):
 		if len(listOfTrigs)==0: return None
-		if len(listOfTrigs)==1: return listOfTrigs[0].triggerId
-		trigids  = [trig.triggerId for trig in listOfTrigs]
+		if len(listOfTrigs)==1: return listOfTrigs[0].triggerIdeff if ideff else listOfTrigs[0].triggerId
+		trigids  = [trig.triggerIdeff if ideff else trig.triggerId for trig in listOfTrigs]
 		trigtype = "multior" if logicalOr else "multiand"
 		newEntry = [trigtype] + trigids
 		for k,v in self.virtualtriggers.iteritems():
@@ -147,13 +151,31 @@ class Master:
 		newId = timestamp(False)
 		self.virtualtriggers[newId] = newEntry
 		return newId
-	def loadVirtualLegs(self):
-		self.virtuallegs     = readCache(self.cachedir+"/virtuals/legs.txt"    , "1:")
-	def loadVirtualSamples(self):
-		self.virtualsamples  = readCache(self.cachedir+"/virtuals/samples.txt" , "1" )
-	def loadVirtualTriggers(self):
-		self.virtualtriggers = readCache(self.cachedir+"/virtuals/triggers.txt", "1:", selection=lambda x: all([n in self.virtuallegs.keys() for n in x[2:]]))
+	def loadBuffers(self):
+		self.retrievableBuffers = {}
+		mkdir(self.cachedir+"/buffers")
+		for fname in os.listdir(self.cachedir+"/buffers"):
+			if not ".csv" in fname: continue
+			df = pandas.read_csv(self.cachedir+"/buffers/"+fname)
+			sn = fname[len("buffer_"):-len(".csv")].split("_")
+			df.name = sn[1]+"_::_"+sn[0]
+			#sn = df.name.split("_::_")
+			if not sn[0] in self.virtualsamples    .keys(): continue
+			if not sn[1] in self.virtualtriggers   .keys(): continue
+			if not sn[0] in self.retrievableBuffers.keys(): self.retrievableBuffers[sn[0]] = {} 
+			self.retrievableBuffers[sn[0]][sn[1]] = df
+	def loadFunctions(self):
+		self.functions = {}
+		## adding functions defined on-the-fly in the cfg
+		for f in self.cfg.function:
+			if not "lambda" in f.options or not "args" in f.options: continue
+			self.functions[f.name] = eval("lambda "+",".join(f.options["args"])+": "+f.options["lambda"])
+		## adding hard-coded functions
+		fhc = HcFunctions(self)
+		for fname in fhc._listAllFunctions():
+			self.functions[fname] = fhc._getFunctionEntity(fname)
 	def loadLists(self):
+		mkdir(self.cachedir+"/lists")
 		self.retrievableLists = {}
 		for fname in os.listdir(self.cachedir+"/lists"):
 			if not ".root" in fname: continue
@@ -167,17 +189,6 @@ class Master:
 				if not sn[1] in self.retrievableLists.keys(): self.retrievableLists[sn[1]] = {} 
 				self.retrievableLists[sn[1]][sn[0]] = obj
 			f.Close()
-	def loadFunctions(self):
-		self.functions = {}
-		## adding functions defined on-the-fly in the cfg
-		for f in self.cfg.function:
-			if not "lambda" in f.options or not "args" in f.options: continue
-			#print "lambda "+",".join(f.options["args"])+": "+f.options["lambda"]
-			self.functions[f.name] = eval("lambda "+",".join(f.options["args"])+": "+f.options["lambda"])
-		## adding hard-coded functions
-		fhc = HcFunctions(self)
-		for fname in fhc._listAllFunctions():
-			self.functions[fname] = fhc._getFunctionEntity(fname)
 	def loadSamples(self):
 		self.samples = SampleManager(self)
 		for sampDef in self.cfg.sample:
@@ -188,9 +199,20 @@ class Master:
 			self.menu.addTrigObject(objDef)
 		for trigDef in self.cfg.trigger:
 			self.menu.addTrigger(trigDef)
+	def loadVirtuals(self):
+		mkdir(self.cachedir+"/virtuals")
+		self.virtuallegs     = readCache(self.cachedir+"/virtuals/legs.txt"    , "1:")
+		self.virtualsamples  = readCache(self.cachedir+"/virtuals/samples.txt" , "1" )
+		self.virtualtriggers = readCache(self.cachedir+"/virtuals/triggers.txt", "1:", selection=lambda x: all([n in self.virtuallegs.keys() for n in x[2:]]))
+	def saveBuffers(self):
+		if len(self.retrievableBuffers.values())==0: return
+		for sname in self.retrievableBuffers.keys():
+			for tname, ebuf in self.retrievableBuffers[sname].iteritems():
+				fname = self.cachedir+"/buffers/buffer_"+sname+"_"+tname+".csv"
+				rmFile(fname)
+				ebuf.to_csv(fname, index=False)
 	def saveLists(self):
 		if len(self.retrievableLists.values())==0: return
-		cleandir(self.cachedir+"/lists")
 		for sname in self.retrievableLists.keys():
 			f = ROOT.TFile.Open(self.cachedir+"/lists/list_"+sname+".root","recreate")
 			f.cd()
@@ -198,11 +220,9 @@ class Master:
 				elist.SetName(tname+"_::_"+sname)
 				elist.Write()
 			f.Close()
-	def saveVirtualLegs(self):
+	def saveVirtuals(self):
 		writeCache(self.cachedir+"/virtuals/legs.txt"    , self.virtuallegs    )
-	def saveVirtualSamples(self):
 		writeCache(self.cachedir+"/virtuals/samples.txt" , self.virtualsamples , False)
-	def saveVirtualTriggers(self):
 		writeCache(self.cachedir+"/virtuals/triggers.txt", self.virtualtriggers)
 		
 

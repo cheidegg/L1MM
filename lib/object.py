@@ -21,7 +21,7 @@ class Objectlist:
 		self.master = master
         self.event  = event
         self.objDef = objDef
-		self.length = getattr(event, objDef.lengthBranch)
+		self.length = getattr(event, objDef.lengthBranch) ## the number of objects in the tree
         self.cache  = {}
     def __getitem__(self, idx):
 		if not type(idx) == int: self.master.vb.error("Doing something stupid")
@@ -31,8 +31,7 @@ class Objectlist:
 		self.cache[idx] = obj
 		return obj
     def __len__(self):
-        return self.length
-
+		return self.length
 
 
 

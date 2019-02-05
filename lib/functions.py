@@ -1,7 +1,8 @@
 import ROOT, re, os, datetime, math
-import inspect
+import inspect, pandas
 
 def cmd(base):
+	#print base
 	os.system(base)
 
 def mkdir(path):
@@ -10,11 +11,11 @@ def mkdir(path):
 
 def cleandir(path):
 	if not os.path.isdir(path): return
-	cmd("rm -r "+path+"/*")
+	cmd("rm -rf "+path+"/*")
 
 def rmFile(path):
 	if not os.path.exists(path): return
-	cmd("rm -r "+path)
+	cmd("rm -rf "+path)
 
 def isFloat(string):
 	if type(string)==type(1.0)  : return True
@@ -40,7 +41,7 @@ def getRootObj(tfile, objDef):
 	prev = tfile.Get(so[0])
 	for sk in so[1:]:
 		if prev.ClassName()=="TDirectoryFile" and sk==so[-1]:
-			## FIXME: none of this is good, I know...
+			## FIXME: could be improved
 			ttree = ROOT.TTree()
 			prev.GetObject(sk, ttree)
 			return ttree
@@ -61,7 +62,7 @@ def getType(variable, isList=False, isDict=False):
 	if variable=="True": 
 		return (bool, True)
 	if variable=="False": 
-		return (bool, True)
+		return (bool, False)
 	if type(variable)==type(True):
 		return (bool, bool(variable))
 	if isInt(variable):
@@ -153,15 +154,11 @@ def findIntersectionIdx(collection, element):
 	## find the idx of the element in the collection that has value just below (above) 
 	## that of the seeked element, i.e. idx+1 will have a value above (below) it
 	previous = 0
-	#print "bam oida"
-	#print collection, element
 	if element>collection[0                ]: return -1
 	if element<collection[len(collection)-1]: return len(collection)
 	for i,x in enumerate(collection):
 		this = x-element ##>0 if rate is smaller than x, <0 if rate is larger than x
-		#print previous, this
 		if previous*this<0: ## change sign
-			#print "found sign change in element",i,"returning..."
 			return i-1
 			break
 		previous = this
@@ -201,4 +198,37 @@ def outside(x, xmin, xmax):
 
 def outsideEq(x, xmin, xmax):
 	return x<=xmax or x>=xmin
+
+def concatDFs(dfs, sels, fields, how):
+	if len(dfs)==1: return dfs[0], sels[0]
+	## first the big one without selection 
+	df = reduce(lambda left, right: pandas.merge(left, right, on=fields, how=how), dfs)
+	df.dropna(inplace=True)
+	## then the small one with all the selections
+	df2 = reduce(lambda left, right: pandas.merge(left, right, on=fields, how=how), sels)
+	df2.dropna(inplace=True)
+	return df, df2
+
+def subsetDF(df, sel):
+	dfsel = df.loc[df['ievt'].isin(sel)]
+	#dfsel.dropna(inplace=True)
+	return dfsel
+
+def intersectDFs(dfs, sels, fields):
+	return concatDFs(dfs, sels, fields, "inner")
+
+def mergeDFs(dfs, sels, fields):
+	if len(dfs)==1: return dfs[0], sels[0]
+	## first the big one without selection 
+	df = pandas.concat(dfs, sort=False)
+	df.drop_duplicates(subset="ievt")
+	df.reset_index(drop=True)
+	## then the small one with all the selections
+	df2 = pandas.concat(sels, sort=False)
+	df2.drop_duplicates(subset="ievt")
+	df2.reset_index(drop=True)
+	return df, df2
+
+#	return concatDFs(dfs, sels, fields, "inner")
+
 

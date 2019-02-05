@@ -42,7 +42,6 @@ def readBranch(tree, branchName, index = 0):
         #    raise RuntimeError, "Branch %s has unsupported type %s" % (branchName, leaf.GetTypeName())
         #typ = _rootType2Python[leaf.GetTypeName()]
         if leaf.GetLen() == 1 and not bool(leaf.GetLeafCount()): 
-            #print branchName
             return _makeValueReader(tree, leaf.GetTypeName(), branchName).Get()[index]
             #return _makeValueReader(tree, typ, branchName).Get()[0]
         else:

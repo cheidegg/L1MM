@@ -9,7 +9,10 @@ class SampleManager:
 		self.yields  = {}
 		self.nEvts   = 0.
 	def addSample(self, sampleDef):
-		self.samples.append(Sample(self.master, sampleDef))
+		if self.master.getOpt("useBuffer")==True:
+			self.samples.append(SampleBuffers(self.master, sampleDef))
+			return
+		self.samples.append(SampleDefault(self.master, sampleDef))
 	def analyze(self, triggers):
 		for sample in self.samples:
 			sample.analyze(triggers)
@@ -22,10 +25,10 @@ class SampleManager:
 		self.yields[trigger.triggerId] = weight
 		return weight
 	def applyAll(self, triggers):
-		## apply all of them together in one iteration
+		## apply all of the triggers together in one iteration
 		return sum([s.intersect(triggers) for s in self.samples])
 	def applyAny(self, triggers):
-		## apply any of them
+		## apply any of the triggers (e.g. effective total rate of menu)
 		return sum([s.merge(triggers) for s in self.samples])
 	def applySum(self, triggers):
 		## apply all of them separately

@@ -1,13 +1,14 @@
 from functions import *
 from cfg       import *
 
+import functionsHardcoded
+
 import ROOT
 import numpy
 import math
 import collections
 import inspect
 
-import functionsHardcoded
 
 def _getArgs(trigLeg, selectedByOtherLegs):
 	## builds the "args" collection, i.e. a list of objects that have been
@@ -16,6 +17,7 @@ def _getArgs(trigLeg, selectedByOtherLegs):
 	## of the previous leg, the collection will be empty regardless of what is
 	## in selectedByOtherLegs)
 	args = [[] for i in range(len(trigLeg.functs.keys()))]
+	if len(selectedByOtherLegs)==0: return args
 	for iu in range(len(args)):
 		selected = [olist for io,olist in enumerate(selectedByOtherLegs) if io+1 in trigLeg.uses[iu]] ## first leg is called "1" not "0"
 		nElms    = [len(theobjs) for theobjs in selected]
@@ -26,8 +28,71 @@ def _getArgs(trigLeg, selectedByOtherLegs):
 	return args
 
 
+def _objsInArgs(theObjs, args):
+	## check if the objects are in the args
+	for iu in range(len(args)):
+		for iv in range(len(args[iu])):
+			if any([x in args[iu][iv] for x in theObjs]):
+				return True
+	return False
 
-def _leg(functions, event, trigObjlists, trigLeg, selectedByOtherLegs, onlyThresholdCut=False, exceptThresholdCut=False):
+
+def _buildCombinations(theCollections, nCols, sameObj=True): 
+	## building combinations of indices for the objects in theCollections
+	combinations = []
+	if len(theCollections)==0: return []
+	nElms = [len(theCollections[io]) for io in range(nCols)]
+	nVars = int(numpy.prod(nElms))
+	for iVar in range(nVars):
+		newentry = [(iVar/numpy.prod(nElms[i+1:]))%numpy.prod(nElms[i]) for i in range(len(nElms)-1)] + [iVar%nElms[-1]]
+		if sameObj and any([x!=1 for x in collections.Counter(newentry).values()]): continue
+		if newentry in combinations: continue
+		combinations.append(newentry)
+	return combinations
+
+
+def _mergeCombinations(legComb, multiComb, nCols): 
+	## merge combinations of nCols objects; two different formats in legComb and multiComb
+	## cause in multiComb, the combination individual elements are in lists, for legComb not
+	if len(legComb)+len(multiComb)==0: return []
+	combs = []
+	for i in range(len(legComb)):
+		combs.append([{} for j in range(len(legComb  [i]))]) ## need an list with this length
+	for i in range(len(multiComb)):
+		combs.append([{} for j in range(len(multiComb[i]))]) ## need an list with this length
+	indices = _buildCombinations(combs,len(legComb)+len(multiComb))
+
+	merged = []
+	for comb in indices:
+		toAdd   = []
+		allowed = True
+		for iNum,idx in enumerate(comb):
+			## adding the subcombination to the big one
+			use = legComb[iNum] if iNum<len(legComb) else multiComb[iNum]
+			if iNum>=len(legComb): ## for multis, need to unwrap the list
+				if any([x[0] in toAdd for x in use[idx]]): allowed=False; break
+				toAdd.extend([x[0] for x in use[idx]])
+			else:
+				if any([x in toAdd for x in use[idx]]): allowed=False; break
+				toAdd.extend(use[idx])
+		if not allowed: continue
+		merged.append(toAdd)
+	return merged	
+
+
+def _checkLinkages(functions, comb, legs):
+	## checking the linkages between the legs for the given combination of objects
+	if len(comb)!=len(legs): return False
+	pseudoselected = [[obj] for obj in comb]
+	## run the (fake) legs separately using the objects from the previous legs
+	for l, leg in enumerate(legs):
+		args = _getArgs(leg, pseudoselected[0:l])
+		if not any(len(e)>0 for e in args): continue
+		if not leg.apply(functions, comb[l], args, onlyLinkedCuts=True): return False
+	return True
+
+
+def _leg(functions, event, trigObjlists, trigLeg, selectedByOtherLegs, onlyThresholdCut=False, exceptThresholdCut=False, onlyLinkedCuts=False, exceptLinkedCuts=False, keepOverlaps=False, clean=False):
 	## this function evaluates a normal trigger leg (TriggerLeg) on an event that
 	## contains a certain list of trigger objects (trigObjlists)
 	## careful with overlapping legs: there can be multiple previously selected objects 
@@ -57,26 +122,123 @@ def _leg(functions, event, trigObjlists, trigLeg, selectedByOtherLegs, onlyThres
 			for iv in range(len(args[iu])):
 				pargs[iu].append([])
 				pargs[iu][iv] = [x for x in args[iu][iv] if x!=obj]
-
-		if not trigLeg.apply(functions, obj, pargs, onlyThresholdCut, exceptThresholdCut): 
+		if not trigLeg.apply(functions, obj, pargs, onlyThresholdCut, exceptThresholdCut, onlyLinkedCuts, exceptLinkedCuts): 
 			continue
 		selected.append(obj)
+
+	## clean the collections (remove multiple copies of the same object in the collection)
+	## automatically done in case keepOverlaps=False; otherwise might wanna use it!
+	if clean:
+		cleaned = []
+		for obj in selected:
+			isEqual=False
+			for obj2 in cleaned:
+				if obj==obj2: isEqual=True; break
+			if isEqual: continue
+			cleaned.append(obj)
+		selected = cleaned
 	
 	## removing any of the selected objects from the "selected" list in case
 	## it is used in one of the previous legs already
 	for obj in selected:
+		if keepOverlaps==True: result.append(obj); continue
 		used=False
 		for io,others in enumerate(selectedByOtherLegs):
 			if obj in others:
 				if len(others)==1:   ## in this case, the other trigger leg 
 					used=True; break ## would end up with len(objects)==0,
 				                     ## which means the event is rejected
-				                     ## so the event cannot be removed from
+				                     ## so the object cannot be removed from
 				                     ## that list nor can it be kept for this leg
 				others.remove(obj)
 		if not used: result.append(obj)
 	return result
 
+
+def _pairing(master, event, trigObjlists, trigLegs):
+	## evaluation of the complete trigger (with all legs!) on an event
+	## however, we evaluate all but the threshold cuts!
+	## the logic is the following:
+	## * take the objects of a given trigger across all legs
+	## * remove the threshold cut from all trigger legs
+	## * build all pairs of all objects in the event 
+	## * check whether they pass the trigger legs without threshold cut
+	## i.e. this function returns a list of pairs of objects (in particular, 
+	## their threshold value) that pass the trigger
+	## slightly similar to _multi in structure, but doing something completely different
+	
+	
+	## collect all relevant objects in the event
+	objs = []
+	for leg in trigLegs:
+		objs.append(trigObjlists[leg.obj.name])
+	
+	
+	## unwrap multilegs
+	## for this, we create a fake leg for every subleg of a multileg
+	## running them individually won't work, given the mutual overlaps that
+	## they can have via the "elm" key and the extra cuts (e.g. invariant mass); 
+	## however we do build them because we need to mimick individual selections, 
+	## get the thresholds, etc. (i.e. things are a bit more elegant doing it 
+	## in this way); note, we need to run the multilegs in truncate=False mode here!
+	singleLegs = []
+	multiLegs  = []
+	properLegs = []
+	varCut     = master.menu.varCutM1
+	for leg in trigLegs:
+		if "Multi" in leg.__class__.__name__: 
+			multiLegs .append(leg) 
+			flegs = leg.fakeLegs()
+			for f in flegs: f.setThresholdCut(varCut)
+			properLegs.extend(flegs)
+			continue
+		singleLegs.append(leg)
+		properLegs.append(leg)
+
+
+	## running the legs in a simplified way, meaning: we remove the threshold
+	## cuts (the thresholds are later stored in the pair, see below) and we 
+	## remove cuts that have a dependency to other legs (this is checked later
+	## when considering the full pair)
+	legObjs   = []
+	multiObjs = []
+	for il, leg in enumerate(trigLegs):
+		if "Multi" in leg.__class__.__name__:
+			multiObjs.append(_multi(master.functions, event, trigObjlists, leg, [], exceptThresholdCut=True, truncate=False))
+		else:
+			legObjs.append(_leg(master.functions, event, trigObjlists, leg, legObjs, exceptThresholdCut=True, exceptLinkedCuts=True, keepOverlaps=True, clean=True)) 
+
+
+	## after the preselection, we have a mess:
+	## - multi gives you already all permissible combinations, already done here!
+	## - the individual legs give you all permissible objects per leg
+	## Thus, the legs first need to be combined (like one fake multi), and then
+	## the pairs among all multis and fake multis need to be found
+	## First, build the fake multi
+	fakeMultiIdx = _buildCombinations(legObjs, len(singleLegs), False)
+	fakeMulti    = []
+	for comb in fakeMultiIdx:
+		fakeMulti.append([legObjs[io][comb[io]] for io in range(len(singleLegs))])
+
+	## next, we need to combine all pairs from multi lists:
+	combinations = _mergeCombinations([fakeMulti] if len(fakeMulti)>0 else [], multiObjs, len(multiLegs)+1)
+	
+	## now, build the pairs, i.e. store the threshold value of every object in the
+	## combination for every combination
+	pairs = []
+	for ic,comb in enumerate(combinations):
+		pair = []
+		comb = [elm for elm in comb]
+		## discard if any object is used multiple times
+		if any(comb.count(item)>1 for item in comb): continue
+		## check for linkages in this particular combination
+		if not _checkLinkages(master.functions, comb, properLegs): continue
+		## store thresholds
+		for io, obj in enumerate(comb):
+			pair.append(properLegs[io].getThreshold(obj))
+		pairs.append(pair)
+
+	return pairs
 
 
 def _multiPermute(functions, functionCall, num, req, objlist): 
@@ -101,6 +263,8 @@ def _multiPermute(functions, functionCall, num, req, objlist):
 		return combination
 
 	## building the combinations of objects to enter the extra functions
+	## note that for extra functions we do not check all orientations 
+	## e.g. only (0+1) instead of (0+1 and 1+0)
 	combinations = []
 	last = [0 for i in range(num)]
 	for ic in range(binomial(len(objlist), num)):
@@ -135,7 +299,7 @@ def _multiPermute(functions, functionCall, num, req, objlist):
 
 
 
-def _multi(functions, event, trigObjlists, trigLeg, selectedByOtherLegs, onlyThresholdCut=False, exceptThresholdCut=False):
+def _multi(functions, event, trigObjlists, trigLeg, selectedByOtherLegs, onlyThresholdCut=False, exceptThresholdCut=False, truncate=True):
 	## the problem with normal trigger legs is, that if we have more than three such
 	## legs acting on the same trigger object (e.g. TkMu), the chronology in how the
 	## objects are evaluated and assigned to the individual legs matters; in other
@@ -153,14 +317,6 @@ def _multi(functions, event, trigObjlists, trigLeg, selectedByOtherLegs, onlyThr
 	if nObjs < trigLeg.num: 
 		return [[] for i in range(trigLeg.num)]
 
-	## check if any of the objects is contained in args
-	def objsInArgs(theObjs, args):
-		for iu in range(len(args)):
-			for iv in range(len(args[iu])):
-				if any([x in args[iu][iv] for x in theObjs]):
-					return True
-		return False
-
 	## collecting the objects selected by previously evaluated trigger legs
 	args = _getArgs(trigLeg, selectedByOtherLegs)
 
@@ -175,24 +331,17 @@ def _multi(functions, event, trigObjlists, trigLeg, selectedByOtherLegs, onlyThr
 		goodObjs.append([])
 		elms = [goodObjs[i] for i in range(io)]
 		for i in range(nObjs):
-			if objsInArgs([objs[i]], args): continue
-			if not trigLeg.apply(functions, objs[i], io, args, elms, False, onlyThresholdCut=False, exceptThresholdCut=False): continue
+			if _objsInArgs([objs[i]], args): continue
+			#if not trigLeg.apply(functions, objs[i], io, args, elms, False): continue
+			if not trigLeg.apply(functions, objs[i], io, args, elms, False, onlyThresholdCut, exceptThresholdCut): continue
 			goodObjs[io].append(objs[i])
 
-
 	## build the combinations of preselected objects
-	combinations = []
-	nElms = [len(goodObjs[io]) for io in range(trigLeg.num)]
-	nVars = int(numpy.prod(nElms))
-	for iVar in range(nVars):
-		newentry = [(iVar/numpy.prod(nElms[i+1:]))%numpy.prod(nElms[i]) for i in range(len(nElms)-1)] + [iVar%nElms[-1]]
-		if any([x!=1 for x in collections.Counter(newentry).values()]): continue
-		if newentry in combinations: continue
-		combinations.append(newentry)
-
+	combinations = _buildCombinations(goodObjs, trigLeg.num)
 
 	## evaluating the rest of the cuts, now considering the full combination
 	tried = []
+	valid = []
 	for comb in combinations:
 		theObjs = [goodObjs[io][comb[io]] for io in range(trigLeg.num)]
 
@@ -204,7 +353,8 @@ def _multi(functions, event, trigObjlists, trigLeg, selectedByOtherLegs, onlyThr
 		## objects depend on one another
 		allpass = True
 		for io, obj in enumerate(theObjs):
-			if not trigLeg.apply(functions, obj, io, args, elms[io], True, onlyThresholdCut=False, exceptThresholdCut=False): 
+			#if not trigLeg.apply(functions, obj, io, args, elms[io], True): 
+			if not trigLeg.apply(functions, obj, io, args, elms[io], True, onlyThresholdCut, exceptThresholdCut): 
 				allpass = False
 				break
 		if not allpass: continue
@@ -232,14 +382,16 @@ def _multi(functions, event, trigObjlists, trigLeg, selectedByOtherLegs, onlyThr
 		if not allpass: tried.append(sum(comb)); continue
 
 
-		## if all is good, return the first valid combination
-		return [[obj] for obj in theObjs]
+		## if all is good, the combination is valid and we can probe the next one
+		## if truncate=True, return the first valid combination
+		valid.append([[obj] for obj in theObjs])
+		if truncate: return valid[0]
 
 
 	## no appropriate combination has been found, thus we return False 
 	## in shape of an empty collection
-	return [[] for i in range(trigLeg.num)]
-
+	if len(valid)==0: return [[] for i in range(trigLeg.num)]
+	return valid
 
 
 
@@ -403,16 +555,20 @@ class TriggerSelection(object):
 		## when applied to an arbitrary object
 		self.thresholdCut = name
 		cutvar            = self.getCutVar(self.cuts[name])
-		self.thresholdVar = eval("lambda obj: "+cutvar if cutvar else self.obj.leadingvar)
+		if type(cutvar)==list:
+			self.thresholdVar = eval("lambda obj, idx:"+("["+",".join([str(c) for c in cutvar])+"][idx]") if len(cutvar)>0 else self.obj.leadingvar)
+		else:
+			self.thresholdVar = eval("lambda obj: "+cutvar if cutvar else self.obj.leadingvar)
 
 
 
 class TriggerLeg(TriggerSelection):
 	## implementation of a normal trigger leg, i.e. a single selection applied to an object
 
-	def __init__(self, master, obj, cuts, idx):
+	def __init__(self, master, name, obj, cuts, idx):
 		super(TriggerLeg,self).__init__()
 		self.master   = master
+		self.name     = name
 		self.obj      = obj
 		self.idx      = int(idx)
 		self.raw      = " ".join([str(c) for c in cuts])
@@ -423,7 +579,7 @@ class TriggerLeg(TriggerSelection):
 		## return the value of an object for the variable that is the threshold variable 
 		## for this trigger leg (it's probably the Et, but can be changed)
 		return self.thresholdVar(obj)
-	def apply(self, functions, obj, args, onlyThresholdCut=False, exceptThresholdCut=False):
+	def apply(self, functions, obj, args, onlyThresholdCut=False, exceptThresholdCut=False, onlyLinkedCuts=False, exceptLinkedCuts=False):
 		## evaluating the leg on an object (obj)
 
 		## loop over all individual cuts in the leg
@@ -431,6 +587,8 @@ class TriggerLeg(TriggerSelection):
 			isThresholdCut = (name==self.thresholdCut)
 			if (onlyThresholdCut and not isThresholdCut) or (exceptThresholdCut and isThresholdCut): continue
 			iu = int(name.replace("cut",""))
+
+			if (onlyLinkedCuts and len(self.uses[iu])==0) or (exceptLinkedCuts and len(self.uses[iu])>0): continue
 
 			## the leg depends on a previous leg but the corresponding objects are not given
 			if len(self.uses[iu])>0 and len(args[iu])==0: 
@@ -473,7 +631,9 @@ class TriggerLeg(TriggerSelection):
 			self.functs[key] = eval("lambda functions, obj"+(", "+", ".join("leg"+str(i) for i in toUse) if len(toUse)>0 else "")+": "+cut)
 	def characterize(self):
 		## find and store the id of the virtual leg
-		self.legId = [self.master.getLegId(["leg", self.obj.name] + [c for k,c in self.cuts.iteritems()])]
+		cutname       = self.master.menu.varCutM1
+		self.legId    = [self.master.getLegId(["leg", self.obj.name] + [c for k,c in self.cuts.iteritems()])]
+		self.legIdeff = [self.master.getLegId(["leg", self.obj.name] + [c for k,c in self.cuts.iteritems() if k!=cutname])]
 
 
 class TriggerMulti(TriggerSelection):
@@ -482,9 +642,10 @@ class TriggerMulti(TriggerSelection):
 	## num>2 (if num=2 better use two individual normal legs) since
 	## it explores all possible combinations of the objects
 
-	def __init__(self, master, obj, num, cuts, idx):
+	def __init__(self, master, name, obj, num, cuts, idx):
 		super(TriggerMulti,self).__init__()
 		self.master   = master
+		self.name     = name
 		self.obj      = obj
 		self.num      = int(num)
 		self.idx      = int(idx)
@@ -493,10 +654,12 @@ class TriggerMulti(TriggerSelection):
 		self.elms     = []
 		self.buildDef(cuts)
 		self.characterize()
-	def getThreshold(self, obj):
+	def getThreshold(self, obj, idx=0):
 		## return the value of an object for the variable that is the threshold variable 
 		## for this trigger leg (it's probably the Et, but can be changed)
-		return self.thresholdVar(obj)
+		if idx>=self.num: return -1
+		return self.thresholdVar(obj, idx)
+	##def apply(self, functions, obj, io, args, elms, onlyWithElms=True):
 	def apply(self, functions, obj, io, args, elms, onlyWithElms=True, onlyThresholdCut=False, exceptThresholdCut=False):
 		## evaluating the io'th part of the multi-leg on an object (obj)
 
@@ -538,8 +701,9 @@ class TriggerMulti(TriggerSelection):
 		return True
 	def buildDef(self, cuts):
 		## building the trigger from the cfg definition
-		self.cuts = {}
-		self.exts = {}
+		self.defs = [[] for ii in range(self.num)] # the fake leg definitions
+		self.cuts = {} # the cuts per fake leg
+		self.exts = {} # extra cuts on top of fake legs
 		for ic,cut in enumerate(cuts):
 			key = "cut"+str(ic)
 			self.uses.append([])
@@ -548,6 +712,8 @@ class TriggerMulti(TriggerSelection):
 				self.cuts[key] = [True for i in range(self.num)]
 				for ii, c in enumerate(cut):
 					key, cutstring, self.elms[ic], self.uses[ic] = self.buildCut(key, c)
+					if cutstring!="True" and cutstring!="False":
+						self.defs[ii].append(cutstring)
 					self.cuts[key][ii] = self.finalizeCutExpr(cutstring)
 			else:
 				isExtra = False
@@ -556,12 +722,14 @@ class TriggerMulti(TriggerSelection):
 					ext = cut[cut.find("[")+1:cut.find("]")].split(":")
 					req = int(ext[0]) ## how many combinations
 					num = int(ext[1]) ## how many objects for each combination
+					## FIXME: extra cuts will drop out of fake legs!
 					cut = self.finalizeCutExpr(cut[cut.find("]")+1:])
 					self.exts[key] = (cut, num, req)
 					continue	
 				self.cuts[key] = [True for i in range(self.num)]
 				key, cutstring, self.elms[ic], self.uses[ic] = self.buildCut(key, cut)
 				for ii in range(self.num):
+					self.defs[ii].append(cutstring)
 					self.cuts[key][ii] = self.finalizeCutExpr(cutstring)
 		## compiling the individual cuts (in self.functs) and the extra cuts (in self.extras)
 		## the former are used per object in order to determine the proper combination of
@@ -582,10 +750,19 @@ class TriggerMulti(TriggerSelection):
 			self.extras[key] = eval("lambda functions, objList: _multiPermute(functions, \""+cut[0]+"\", "+str(cut[1])+", "+str(cut[2])+", objList)")
 	def characterize(self):
 		## find and store the id of the virtual multi-leg
-		self.legId = []
+		cutname       = self.master.menu.varCutM1
+		self.legId    = []
+		self.legIdeff = []
 		for io in range(self.num):
-			self.legId.append(self.master.getLegId(["multi"+str(io), self.obj.name] + [c[io] for k,c in self.cuts.iteritems()]))
-
+			self.legId   .append(self.master.getLegId(["multi"+str(io), self.obj.name] + [c[io] for k,c in self.cuts.iteritems()]))
+			self.legIdeff.append(self.master.getLegId(["multi"+str(io), self.obj.name] + [c[io] for k,c in self.cuts.iteritems() if k!=cutname]))
+	def fakeLegs(self):
+		## return an instance of the TriggerLeg class for every subselection of this trigger
+		if hasattr(self, "fakelegs"): return self.fakelegs
+		self.fakelegs = []
+		for ic in range(self.num):
+			self.fakelegs.append(TriggerLeg(self.master, self.name+"_"+str(ic), self.obj, self.defs[ic], ic))
+		return self.fakelegs
 
 
 class Trigger:
@@ -601,7 +778,8 @@ class Trigger:
 		self.trigVar  = {}
 		self.load()
 		self.characterize()
-	def apply(self, event, trigObjlists, onlyThresholds=False, exceptThresholds=False):
+	def apply(self, event, trigObjlists):
+	#def apply(self, event, trigObjlists, onlyThresholds=False, exceptThresholds=False):
 		## applying the trigger on an event with the corresponding trigger objects
 		## given in the trigObjlists variable
 		legs = []
@@ -613,29 +791,61 @@ class Trigger:
 		## the legs variable contains a list of objects passing the individual legs
 		## if any of these lists is empty, it means, the event failed the corresponding leg
 		if any([len(l)==0 for l in legs]): return False
-		return True 
+		return True
+	def applyPairing(self, event, trigObjlists):
+		## building and returning pairs of objects in this event
+		return _pairing(self.master, event, trigObjlists, self.legentities) 
 	def characterize(self):
 		## find and store the virtual id of the trigger
 		## this relies on the virtual id of the individual legs
-		legIds = []
+		legIds    = []
+		legIdseff = []
 		for leg in self.legs.values():
-			legIds.extend(leg.legId)
+			legIds   .extend(leg.legId   )
+			legIdseff.extend(leg.legIdeff)
 		for leg in self.multis.values():
-			legIds.extend(leg.legId)
+			legIds   .extend(leg.legId   )
+			legIdseff.extend(leg.legIdeff)
 ## CH: check this look up of the trigger id again, especially for the variation case!!
-		self.triggerId = self.master.getTrigId(["single"] + legIds)
+		self.triggerId    = self.master.getTrigId(["single"] + legIds   )
+		self.triggerIdeff = self.master.getTrigId(["single"] + legIdseff)
 	def getCutValues(self, legname, cutname):
 		if not legname in self.legnames: return None
 		collection = self.multis if "multi" in legname else self.legs
 		if not cutname in collection[legname].cuts.keys(): return None
 		rawExpr = collection[legname].cuts[cutname]
 		return collection[legname].getCutValues(rawExpr)
+	def getFakedLegNames(self):
+		## return leg names including faking of multilegs
+		if hasattr(self, "legnamesfaked"): return self.legnamesfaked
+		self.legnamesfaked = []
+		for leg in self.legentities:
+			legname = leg.name
+			if "multi" in legname: 
+				self.legnamesfaked.extend([legname+"_"+str(i) for i in range(leg.num)])
+			else:
+				self.legnamesfaked.append(legname)
+		return self.legnamesfaked
+	def getFakedLegCuts(self):
+		## return threshold cuts for every leg including faking of multilegs
+		## since for a variation we create a new trigger, the varied value already is included
+		if hasattr(self, "legcutsfaked"): return self.legcutsfaked
+		cutname           = self.master.menu.varCutM1
+		self.legcutsfaked = []
+		for leg in self.legentities:
+			legname = leg.name
+			legcuts = self.getCutValues(legname, cutname)
+			self.legcutsfaked.extend(legcuts)
+		return self.legcutsfaked
 	def getLegNameByIdx(self, legidx):
 		if legidx>=len(self.legnames): return None
 		return self.legnames[legidx]
 	def getLegByName(self, legname):
 		if not legname in self.legnames: return None
 		return self.legs[legname] if "leg" in legname else self.multis[legname]
+	def getOldestParent(self):
+		if not hasattr(self, "parent") or not self.parent: return self
+		return self.parent.getOldestParent()
 	def makeVar(self, varname, varleg, varcut, varvalue):
 		## create a copy of the trigger with a varied cut
 		## i.e. the cuts for ALL legs for this trigger are varied
@@ -667,13 +877,15 @@ class Trigger:
 		if sum(scales)==len(scales): 
 			self.varValue = varvalue
 			return self
+		varvaluesall = [0 for iv in range(len(oldvalues))]
 		for iv,oldvalue in enumerate(oldvalues):
 			if type(oldvalue)==list:
 				newvalues[iv] = []
 				for ie,elm in enumerate(oldvalue):
 					newvalues[iv].append(theLeg.setCutValue(cutToVary, scales[ie]*elm))
 				continue
-			newvalues[iv] = theLeg.setCutValue(cutToVary, scales[0]*oldvalue) 
+			newvalues   [iv] = theLeg.setCutValue(cutToVary, scales[0]*oldvalue) 
+			varvaluesall[iv] = scales[0]*oldvalue
 			## this is necessary in case the cut you want to vary contains an expression, not just a float or int value
 		for key in self.opts.keys():
 			if not key in self.legnames: 
@@ -681,14 +893,15 @@ class Trigger:
 				continue
 			idx = self.legnames.index(key)
 			newleg              = self.opts[key]
-			newleg[cutIdx+add]  = newvalues[idx]
+			newleg[cutIdx+add]  = newvalues[idx][0] if len(newvalues[idx])==1 else newvalues[idx]
 			newDef.options[key] = newleg
 		newTrig = Trigger(self.master, newDef)
-		newTrig.parent   = self
-		newTrig.varName  = varname
-		newTrig.varLeg   = varleg  
-		newTrig.varCut   = varcut  
-		newTrig.varValue = varvalue
+		newTrig.parent    = self
+		newTrig.varName   = varname
+		newTrig.varLeg    = varleg  
+		newTrig.varCut    = varcut  
+		newTrig.varValue  = varvalue
+		newTrig.varValues = varvaluesall
 		self.trigVar[varname] = newTrig
 		return newTrig
 	def load(self):
@@ -699,11 +912,11 @@ class Trigger:
 		## for a leg, it takes a _leg(evt, trigObjlists, legDef)
 		## for a evt, it takes a _evt(evt, trigObjlists, legs  , evtDef)
 		objnames         = [o.name for o in self.master.menu.objects]
-		self.legs        = {}
-		self.multis      = {}
+		self.legs        = {} ## instances of only nominal legs
+		self.multis      = {} ## instances of only multi legs
 		self.ranges      = {}
-		self.legnames    = []
-		self.legentities = []
+		self.legnames    = [] ## names of all legs (multi and nominal)
+		self.legentities = [] ## instances of all legs (multi and nominal)
 		for key in self.opts.keys():
 			## a normal leg
 			if "leg" in key:
@@ -712,7 +925,7 @@ class Trigger:
 					self.master.vb.warning("Cannot find trigger object "+args[0]+" for "+key+" of path "+self.name+"\nSkipping this leg! Results may be different than expected!")
 					continue
 				obj = self.master.menu.objects[objnames.index(args[0])]
-				self.legs[key] = TriggerLeg(self.master, obj, args[1:], int(key[3:]))
+				self.legs[key] = TriggerLeg(self.master, key, obj, args[1:], int(key[3:]))
 				self.legnames   .append(key)
 				self.legentities.append(self.legs[key])
 
@@ -723,7 +936,7 @@ class Trigger:
 					self.master.vb.warning("Cannot find trigger object "+args[0]+" for "+key+" of path "+self.name+"\nSkipping this leg! Results may be different than expected!")
 					continue
 				obj = self.master.menu.objects[objnames.index(args[0])]
-				self.multis[key] = TriggerMulti(self.master, obj, args[1], args[2:], int(key[5:]))
+				self.multis[key] = TriggerMulti(self.master, key, obj, args[1], args[2:], int(key[5:]))
 				self.legnames   .append(key)
 				self.legentities.append(self.multis[key])
 
@@ -741,7 +954,7 @@ class Trigger:
 					continue
 				self.ranges[key] = args
 	def setThresholdCuts(self):
-		varCut = "cut"+str(self.master.cfg.variable["varCut"])
+		varCut = self.master.menu.varCutM1
 		for leg   in self.legs  .values():
 			leg  .setThresholdCut(varCut)
 		for multi in self.multis.values():
